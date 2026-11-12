@@ -1,0 +1,197 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    background-color: #06060f;
+    color: #f0f0ff;
+    height: 100%;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: #06060f;
+    color: #f0f0ff;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior: none;
+  }
+
+  #root {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Thin accent scrollbars */
+  ::-webkit-scrollbar { width: 3px; height: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(124, 58, 237, 0.3); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(124, 58, 237, 0.5); }
+
+  /* iOS-native dark date/time pickers */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"] {
+    color-scheme: dark;
+  }
+
+  /* Better native select on dark */
+  select option {
+    background-color: #1a1a2e;
+    color: #f0f0ff;
+  }
+
+  /* Focus ring */
+  :focus-visible {
+    outline: 2px solid #7c3aed;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  /* ───── Liquid Glass Surfaces ───── */
+  .glass-1 {
+    background: rgba(255, 255, 255, 0.05);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top-color: rgba(255, 255, 255, 0.18);
+  }
+
+  .glass-2 {
+    background: rgba(255, 255, 255, 0.08);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-top-color: rgba(255, 255, 255, 0.22);
+  }
+
+  .glass-elevated {
+    background: rgba(255, 255, 255, 0.12);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    backdrop-filter: blur(32px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-top-color: rgba(255, 255, 255, 0.28);
+  }
+
+  .glass-nav {
+    background: rgba(10, 10, 24, 0.75);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    backdrop-filter: blur(32px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-top-color: rgba(255, 255, 255, 0.18);
+  }
+
+  .glass-input {
+    background: rgba(255, 255, 255, 0.04);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+  }
+
+  .glass-input:focus {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(124, 58, 237, 0.6);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+  }
+
+  /* ───── Accent Gradient ───── */
+  .accent-gradient {
+    background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+  }
+
+  .accent-gradient-text {
+    background: linear-gradient(135deg, #a78bfa 0%, #818cf8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .accent-gradient-border {
+    border-image: linear-gradient(135deg, #7c3aed, #6366f1) 1;
+  }
+
+  /* ───── Safe Areas ───── */
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .pl-safe { padding-left: env(safe-area-inset-left); }
+  .pr-safe { padding-right: env(safe-area-inset-right); }
+
+  .mt-safe { margin-top: env(safe-area-inset-top); }
+  .mb-safe { margin-bottom: env(safe-area-inset-bottom); }
+
+  /* ───── Typography ───── */
+  .text-primary { color: #f0f0ff; }
+  .text-secondary { color: #a0a0c0; }
+  .text-muted { color: #606080; }
+
+  /* ───── Category Colors ───── */
+  .category-personal { @apply bg-purple-500/15 text-purple-300; }
+  .category-work { @apply bg-blue-500/15 text-blue-300; }
+  .category-fitness { @apply bg-green-500/15 text-green-300; }
+  .category-learning { @apply bg-amber-500/15 text-amber-300; }
+  .category-finance { @apply bg-emerald-500/15 text-emerald-300; }
+  .category-other { @apply bg-slate-500/15 text-slate-300; }
+  .category-health { @apply bg-red-500/15 text-red-300; }
+  .category-mindfulness { @apply bg-teal-500/15 text-teal-300; }
+  .category-productivity { @apply bg-cyan-500/15 text-cyan-300; }
+  .category-relationships { @apply bg-pink-500/15 text-pink-300; }
+  .category-career { @apply bg-orange-500/15 text-orange-300; }
+  .category-lifestyle { @apply bg-rose-500/15 text-rose-300; }
+
+  /* ───── Priority Colors ───── */
+  .priority-high { @apply bg-danger/15 text-red-300; }
+  .priority-medium { @apply bg-warning/15 text-amber-300; }
+  .priority-low { @apply bg-info/15 text-blue-300; }
+
+  /* ───── Mood Colors ───── */
+  .mood-great { color: #22c55e; }
+  .mood-good { color: #84cc16; }
+  .mood-okay { color: #f59e0b; }
+  .mood-bad { color: #f97316; }
+  .mood-terrible { color: #ef4444; }
+}
+
+@layer utilities {
+  .touch-action-none { touch-action: none; }
+  .user-select-none { user-select: none; -webkit-user-select: none; }
+
+  /* Shimmer loading state */
+  .shimmer {
+    background: linear-gradient(90deg,
+      rgba(255,255,255,0.03) 25%,
+      rgba(255,255,255,0.08) 50%,
+      rgba(255,255,255,0.03) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s linear infinite;
+  }
+
+  /* Line clamp */
+  .line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+  .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .line-clamp-3 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+
+  /* Bottom nav spacing */
+  .pb-nav { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+
+  /* Scrollable no-bar */
+  .scroll-smooth-snap { scroll-snap-type: x mandatory; overflow-x: auto; scrollbar-width: none; }
+  .scroll-smooth-snap::-webkit-scrollbar { display: none; }
+}

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppLayout } from './components/layout/AppLayout';
 import { ToastContainer } from './components/ui';
 import { DashboardPage } from './modules/dashboard/DashboardPage';
@@ -26,7 +26,7 @@ export function App() {
   }, []);
 
   return (
-    <BrowserRouter>
+    <HashRouter>
       <ToastContainer />
       <Routes>
         <Route path="/" element={<AppLayout />}>
@@ -45,7 +45,7 @@ export function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 

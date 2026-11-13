@@ -50,8 +50,43 @@ export function Tabs({ tabs, activeTab, onChange, className, variant = 'pill', s
     );
   }
 
+  // Pill variant — wrap in a scroll container so backdrop-filter doesn't block overflow on iOS
+  if (scrollable) {
+    return (
+      <div className={cn('w-full overflow-x-auto scrollbar-none', className)}
+           style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+        <div className="flex p-1 glass-1 rounded-pill gap-1 w-max min-w-full">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => onChange(tab.id)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-pill font-medium whitespace-nowrap transition-all duration-200',
+                size === 'sm' ? 'px-3 py-1 text-xs' : 'px-4 py-1.5 text-sm',
+                activeTab === tab.id
+                  ? 'accent-gradient text-white shadow-accent-sm'
+                  : 'text-content-muted hover:text-content-secondary',
+              )}
+            >
+              {tab.icon}
+              {tab.label}
+              {tab.count !== undefined && (
+                <span className={cn(
+                  'text-[10px] px-1.5 py-0.5 rounded-full',
+                  activeTab === tab.id ? 'bg-white/20' : 'bg-white/10',
+                )}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={cn('flex p-1 glass-1 rounded-pill gap-1', scrollable && 'overflow-x-auto scroll-smooth-snap', className)}>
+    <div className={cn('flex p-1 glass-1 rounded-pill gap-1', className)}>
       {tabs.map(tab => (
         <button
           key={tab.id}

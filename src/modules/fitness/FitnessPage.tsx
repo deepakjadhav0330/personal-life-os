@@ -44,7 +44,7 @@ export function FitnessPage() {
     <div className="min-h-screen-dvh">
       <PageHeader title="Fitness" />
       <div className="px-4 pb-4 flex flex-col gap-3">
-        <Tabs tabs={tabs} activeTab={activeTab} onChange={id => setActiveTab(id as FitnessTab)} scrollable />
+        <Tabs tabs={tabs} activeTab={activeTab} onChange={id => setActiveTab(id as FitnessTab)} variant="underline" scrollable />
         {activeTab === 'body' && <BodyTab />}
         {activeTab === 'workouts' && <WorkoutsTab />}
         {activeTab === 'nutrition' && <NutritionTab />}

@@ -36,7 +36,7 @@ export interface Task {
 
 // ─── HABITS ──────────────────────────────────────────────────
 export type HabitCategory = 'health' | 'fitness' | 'learning' | 'mindfulness' | 'productivity' | 'finance' | 'personal' | 'other';
-export type HabitFrequency = 'daily' | 'weekly' | 'specific_days';
+export type HabitFrequency = 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'specific_days';
 
 export interface Habit {
   id?: number;

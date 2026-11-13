@@ -24,8 +24,10 @@ const categoryOptions = [
 ];
 
 const frequencyOptions = [
-  { value: 'daily', label: 'Every day' },
-  { value: 'weekly', label: 'Weekly' },
+  { value: 'daily',    label: 'Every day' },
+  { value: 'weekdays', label: 'Weekdays only  (Mon – Fri)' },
+  { value: 'weekends', label: 'Weekends only  (Sat – Sun)' },
+  { value: 'weekly',   label: 'Weekly' },
 ];
 
 export function HabitForm({ habitId, onClose }: HabitFormProps) {

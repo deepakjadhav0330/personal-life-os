@@ -101,6 +101,7 @@ export function SettingsPage() {
 
   const clearAllData = async () => {
     if (clearInput !== 'DELETE MY DATA') { toast.error('Type DELETE MY DATA exactly'); return; }
+    localStorage.setItem('lifeOS_userCleared', 'true');
     await db.delete();
     toast.success('All data cleared');
     window.location.reload();

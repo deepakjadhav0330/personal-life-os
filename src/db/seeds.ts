@@ -11,6 +11,9 @@ const fmt = (d: Date) => format(d, 'yyyy-MM-dd');
 const iso = (d: Date) => d.toISOString();
 
 export async function seedDatabase(): Promise<void> {
+  // Don't re-seed if the user has explicitly cleared their data
+  if (localStorage.getItem('lifeOS_userCleared') === 'true') return;
+
   // Guard — only seed if the DB is empty
   const existing = await db.tasks.count();
   if (existing > 0) return;

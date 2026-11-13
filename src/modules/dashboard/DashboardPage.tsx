@@ -66,11 +66,9 @@ export function DashboardPage() {
     <div className="min-h-screen-dvh">
       <PageHeader title="Life OS" showNotifications large />
       <div className="px-4 pb-4 flex flex-col gap-3">
-        {/* Quick-add bar — always visible at the top of the dashboard */}
-        <QuickAddBar />
-
         {hasData === false ? (
           <>
+            <QuickAddBar initialValue={quickAddText} />
             <GreetingWidget />
             <WelcomeCard />
           </>

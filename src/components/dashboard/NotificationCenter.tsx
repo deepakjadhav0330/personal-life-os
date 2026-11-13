@@ -9,7 +9,6 @@ import type { Nudge } from '../../hooks/useSmartNudges';
 import { getDismissed, persistDismiss } from '../../hooks/useSmartNudges';
 import { toast } from '../../stores/useToastStore';
 import { useNotificationStore } from '../../stores/useNotificationStore';
-import { cn } from '../../utils/cn';
 
 interface NotificationCenterProps {
   nudges: Nudge[];

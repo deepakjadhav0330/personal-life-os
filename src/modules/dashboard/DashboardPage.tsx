@@ -1,11 +1,11 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSetting } from '../../hooks/useSetting';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard } from '../../components/ui';
 import { QuickAddBar } from '../../components/dashboard/QuickAddBar';
-import { NudgeBanner } from '../../components/dashboard/NudgeBanner';
+import { NotificationCenter } from '../../components/dashboard/NotificationCenter';
 import { useSmartNudges } from '../../hooks/useSmartNudges';
 import { GreetingWidget } from '../../components/widgets/GreetingWidget';
 import { DailySummaryWidget } from '../../components/widgets/DailySummaryWidget';
@@ -46,6 +46,10 @@ export function DashboardPage() {
   const location = useLocation();
   const quickAddText: string | undefined = location.state?.quickAdd;
   const nudges = useSmartNudges();
+  const [notifOpen, setNotifOpen] = useState(false);
+
+  // Dismissed nudges counted separately from pending reminders
+  const activeNudgeCount = nudges.length;
 
   // Clear the state so it doesn't persist on subsequent renders
   useEffect(() => {
@@ -67,10 +71,14 @@ export function DashboardPage() {
 
   return (
     <div className="min-h-screen-dvh">
-      <PageHeader title="Life OS" showNotifications large />
+      <PageHeader
+        title="Life OS"
+        showNotifications
+        nudgeCount={activeNudgeCount}
+        onBellClick={() => setNotifOpen(true)}
+        large
+      />
       <div className="px-4 pb-4 flex flex-col gap-3">
-        {/* Smart nudges — time-aware banners from local data */}
-        <NudgeBanner nudges={nudges} />
 
         {hasData === false ? (
           <>
@@ -89,6 +97,13 @@ export function DashboardPage() {
           </>
         )}
       </div>
+
+      {/* Notification center — bell icon opens this */}
+      <NotificationCenter
+        open={notifOpen}
+        onClose={() => setNotifOpen(false)}
+        nudges={nudges}
+      />
     </div>
   );
 }

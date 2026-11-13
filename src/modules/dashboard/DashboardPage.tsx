@@ -5,6 +5,8 @@ import { useSetting } from '../../hooks/useSetting';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard } from '../../components/ui';
 import { QuickAddBar } from '../../components/dashboard/QuickAddBar';
+import { NotificationCenter } from '../../components/dashboard/NotificationCenter';
+import { useSmartNudges } from '../../hooks/useSmartNudges';
 import { GreetingWidget } from '../../components/widgets/GreetingWidget';
 import { DailySummaryWidget } from '../../components/widgets/DailySummaryWidget';
 import { TaskWidget } from '../../components/widgets/TaskWidget';
@@ -43,6 +45,8 @@ export function DashboardPage() {
   const [dashConfig] = useSetting<DashboardWidgetConfig[]>('dashboardConfig', defaultConfig);
   const location = useLocation();
   const quickAddText: string | undefined = location.state?.quickAdd;
+  const nudges = useSmartNudges();
+  const activeNudgeCount = nudges.length;
 
   // Clear the state so it doesn't persist on subsequent renders
   useEffect(() => {
@@ -64,8 +68,9 @@ export function DashboardPage() {
 
   return (
     <div className="min-h-screen-dvh">
-      <PageHeader title="Life OS" showNotifications large />
+      <PageHeader title="Life OS" showNotifications nudgeCount={activeNudgeCount} large />
       <div className="px-4 pb-4 flex flex-col gap-3">
+
         {hasData === false ? (
           <>
             <QuickAddBar initialValue={quickAddText} />
@@ -83,6 +88,9 @@ export function DashboardPage() {
           </>
         )}
       </div>
+
+      {/* Notification center — bell icon opens this via useNotificationStore */}
+      <NotificationCenter nudges={nudges} />
     </div>
   );
 }

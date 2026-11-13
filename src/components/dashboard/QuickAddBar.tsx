@@ -16,7 +16,12 @@ interface Suggestion {
 }
 
 // ─── Component ────────────────────────────────────────────────
-export function QuickAddBar() {
+interface QuickAddBarProps {
+  /** Pre-filled value from an iOS Shortcut deep link (?q=...) */
+  initialValue?: string;
+}
+
+export function QuickAddBar({ initialValue }: QuickAddBarProps) {
   const [input, setInput]       = useState('');
   const [parsed, setParsed]     = useState<QuickAddResult | null>(null);
   const [isActive, setIsActive] = useState(false);
@@ -24,6 +29,17 @@ export function QuickAddBar() {
 
   const inputRef   = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Pre-fill from iOS Shortcut deep link
+  useEffect(() => {
+    if (initialValue) {
+      setInput(initialValue);
+      setIsActive(true);
+      // Small delay so the parse fires after the value is set
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValue]);
 
   const [currency] = useSetting('currency', 'INR');
   const symbol = currency === 'INR' ? '₹' : '$';

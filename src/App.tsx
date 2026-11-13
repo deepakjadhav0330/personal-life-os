@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { addMonths } from 'date-fns';
 import { AppLayout } from './components/layout/AppLayout';
 import { AmbientBackground } from './components/layout/AmbientBackground';
+import { DeepLinkHandler } from './components/DeepLinkHandler';
 import { ToastContainer } from './components/ui';
 import { DashboardPage } from './modules/dashboard/DashboardPage';
 import { TasksPage } from './modules/tasks/TasksPage';
@@ -16,6 +17,7 @@ import { LearningPage } from './modules/learning/LearningPage';
 import { SettingsPage } from './modules/settings/SettingsPage';
 import { PrivacyPage } from './modules/settings/PrivacyPage';
 import { InstallGuidePage } from './modules/settings/InstallGuidePage';
+import { ShortcutsGuidePage } from './modules/settings/ShortcutsGuidePage';
 import { seedDatabase } from './db/seeds';
 import { db } from './db/database';
 
@@ -31,6 +33,7 @@ export function App() {
           a stacking context that would trap modal/sheet z-indices    */}
       <AmbientBackground />
       <ToastContainer />
+      <DeepLinkHandler />
       <Routes>
         <Route path="/" element={<AppLayout />}>
           <Route index element={<DashboardPage />} />
@@ -45,6 +48,7 @@ export function App() {
           <Route path="settings" element={<SettingsPage />} />
           <Route path="settings/privacy" element={<PrivacyPage />} />
           <Route path="settings/install" element={<InstallGuidePage />} />
+          <Route path="settings/shortcuts" element={<ShortcutsGuidePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
@@ -101,3 +105,4 @@ async function checkRecurringTransactions() {
     console.warn('[recurring]', err);
   }
 }
+

@@ -165,36 +165,14 @@ export function HabitForm({ habitId, onClose }: HabitFormProps) {
 
       {/* ── Frequency picker ─────────────────────────────── */}
       <div>
-        <label className="text-xs font-medium text-content-secondary uppercase tracking-wide mb-2 block">
-          Frequency
-        </label>
+        <Select
+          label="Frequency"
+          value={freqMode}
+          onChange={e => setFreqMode(e.target.value as FreqMode)}
+          options={FREQ_OPTIONS.map(o => ({ value: o.id, label: `${o.label}  (${o.sublabel})` }))}
+        />
 
-        {/* 2-column grid for the 5 options */}
-        <div className="grid grid-cols-2 gap-2">
-          {FREQ_OPTIONS.map(opt => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => setFreqMode(opt.id)}
-              className={cn(
-                'flex flex-col items-start px-3 py-2.5 rounded-input transition-all duration-200 text-left',
-                freqMode === opt.id
-                  ? 'accent-gradient text-white'
-                  : 'glass-1 text-content-secondary hover:glass-2',
-              )}
-            >
-              <span className="text-sm font-semibold">{opt.label}</span>
-              <span className={cn(
-                'text-[10px] mt-0.5',
-                freqMode === opt.id ? 'text-white/70' : 'text-content-muted',
-              )}>
-                {opt.sublabel}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        {/* Custom day picker — shown only when "Custom days" is selected */}
+        {/* Custom day picker — only shown when "Custom days" is selected */}
         {freqMode === 'custom' && (
           <div className="mt-3">
             <p className="text-[11px] text-content-muted mb-2">Select the days this habit runs:</p>

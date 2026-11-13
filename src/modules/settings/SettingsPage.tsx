@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard, Button, Input, Select, Toggle } from '../../components/ui';
 import { useSetting } from '../../hooks/useSetting';
 import { db, exportAllData } from '../../db/database';
+import { validateBackupStructure } from '../../db/database';
 import { toast } from '../../stores/useToastStore';
 import { ChevronRight, Download, Upload, Shield, Smartphone, Trash2, Database } from 'lucide-react';
 import type { DashboardWidgetConfig } from '../../db/schema';
@@ -35,8 +36,8 @@ export function SettingsPage() {
   const [storageInfo, setStorageInfo] = useState<{ used: string; total: string } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
-  // Storage estimate
-  useState(() => {
+  // Load storage estimate on mount
+  useEffect(() => {
     if ('storage' in navigator) {
       navigator.storage.estimate().then(est => {
         const used = ((est.usage ?? 0) / (1024 * 1024)).toFixed(1);
@@ -44,7 +45,7 @@ export function SettingsPage() {
         setStorageInfo({ used, total });
       });
     }
-  });
+  }, []);
 
   const exportBackup = async () => {
     try {
@@ -72,7 +73,8 @@ export function SettingsPage() {
     try {
       const text = await file.text();
       const parsed = JSON.parse(text);
-      if (!parsed.appVersion || !parsed.data) { toast.error('Invalid backup file'); return; }
+      const { valid, error } = validateBackupStructure(parsed);
+      if (!valid) { toast.error(`Invalid backup: ${error}`); return; }
       const totalRecords = parsed.totalRecords || 'unknown';
       if (!window.confirm(`Import ${totalRecords} records? This will REPLACE all current data.`)) return;
       if (!window.confirm('Are you absolutely sure? This cannot be undone.')) return;
@@ -101,10 +103,14 @@ export function SettingsPage() {
 
   const clearAllData = async () => {
     if (clearInput !== 'DELETE MY DATA') { toast.error('Type DELETE MY DATA exactly'); return; }
-    localStorage.setItem('lifeOS_userCleared', 'true');
-    await db.delete();
-    toast.success('All data cleared');
-    window.location.reload();
+    try {
+      await db.delete(); // delete DB first — if this fails, localStorage flag is NOT set
+      localStorage.setItem('lifeOS_userCleared', 'true');
+      toast.success('All data cleared');
+      window.location.reload();
+    } catch {
+      toast.error('Could not clear data — please try again');
+    }
   };
 
   return (

@@ -5,6 +5,7 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Badge, Input, Select } from '../../components/ui';
 import { toast } from '../../stores/useToastStore';
 import { todayStr, formatDate } from '../../utils/dates';
+import { useSetting } from '../../hooks/useSetting';
 import { CalendarDays, Bell, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 
@@ -30,12 +31,16 @@ export function CalendarPage() {
 function MonthView() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [weekStartsOn] = useSetting<0 | 1>('weekStartsOn', 1);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
-  const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const calStart = startOfWeek(monthStart, { weekStartsOn });
+  const calEnd = endOfWeek(monthEnd, { weekStartsOn });
   const days = eachDayOfInterval({ start: calStart, end: calEnd });
+  const dayLabels = weekStartsOn === 1
+    ? ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+    : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
   const tasks = useLiveQuery(() => db.tasks.where('status').equals('pending').toArray(), [], []);
   const reminders = useLiveQuery(() => db.reminders.where('status').equals('pending').toArray(), [], []);
@@ -71,7 +76,7 @@ function MonthView() {
       {/* Calendar grid */}
       <GlassCard padding="sm">
         <div className="grid grid-cols-7 mb-2">
-          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+          {dayLabels.map((d, i) => (
             <div key={i} className="text-center text-[10px] font-medium text-content-muted py-1">{d}</div>
           ))}
         </div>
@@ -189,7 +194,7 @@ function RemindersView() {
     if (!title.trim()) return;
     await db.reminders.add({
       title: title.trim(),
-      scheduledAt: `${scheduledDate}T${scheduledTime}:00.000Z`,
+      scheduledAt: `${scheduledDate}T${scheduledTime}:00`,
       repeat, type: 'general', status: 'pending',
       createdAt: new Date().toISOString(),
     });

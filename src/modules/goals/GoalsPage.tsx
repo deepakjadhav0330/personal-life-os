@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
@@ -168,7 +168,7 @@ function GoalForm({ goalId, onClose }: { goalId: number | null; onClose: () => v
   const [loading, setLoading] = useState(false);
   const [milestones, setMilestones] = useState<{ title: string }[]>([]);
 
-  useState(() => {
+  useEffect(() => {
     if (!goalId) return;
     db.goals.get(goalId).then(g => {
       if (!g) return;
@@ -178,7 +178,7 @@ function GoalForm({ goalId, onClose }: { goalId: number | null; onClose: () => v
     db.milestones.where('goalId').equals(goalId).sortBy('order').then(ms => {
       setMilestones(ms.map(m => ({ title: m.title })));
     });
-  });
+  }, [goalId]);
 
   const save = async () => {
     if (!title.trim()) { toast.error('Title required'); return; }
@@ -241,6 +241,7 @@ function GoalForm({ goalId, onClose }: { goalId: number | null; onClose: () => v
 
 function GoalDetail({ goal, milestones, onClose }: { goal: Goal; milestones: Milestone[]; onClose: () => void }) {
   const [newMilestone, setNewMilestone] = useState('');
+  const [showCompletePrompt, setShowCompletePrompt] = useState(false);
 
   const sortedMs = [...milestones].sort((a, b) => a.order - b.order);
   const progress = milestones.length ? Math.round(milestones.filter(m => m.status === 'completed').length / milestones.length * 100) : 0;
@@ -252,15 +253,9 @@ function GoalDetail({ goal, milestones, onClose }: { goal: Goal; milestones: Mil
     } else {
       await db.milestones.update(ms.id!, { status: 'completed', completedAt: now });
       toast.success('Milestone completed! 🎯');
-      // Check if all done
       const updated = await db.milestones.where('goalId').equals(goal.id!).toArray();
       if (updated.every(m => m.id === ms.id ? true : m.status === 'completed')) {
-        const complete = window.confirm('All milestones done! Mark goal as completed?');
-        if (complete) {
-          await db.goals.update(goal.id!, { status: 'completed', updatedAt: now });
-          toast.success('Goal completed! 🏆');
-          onClose();
-        }
+        setShowCompletePrompt(true);
       }
     }
   };
@@ -315,6 +310,20 @@ function GoalDetail({ goal, milestones, onClose }: { goal: Goal; milestones: Mil
         />
         <Button variant="primary" size="sm" onClick={addMilestone} disabled={!newMilestone.trim()}>Add</Button>
       </div>
+
+      {/* All milestones done — prompt to complete the goal */}
+      <Modal open={showCompletePrompt} onClose={() => setShowCompletePrompt(false)} title="🏆 All milestones complete!" size="sm">
+        <p className="text-sm text-content-secondary mb-4">Every milestone is done. Would you like to mark this goal as completed?</p>
+        <div className="flex gap-3">
+          <Button variant="ghost" fullWidth onClick={() => setShowCompletePrompt(false)}>Keep Active</Button>
+          <Button variant="primary" fullWidth onClick={async () => {
+            await db.goals.update(goal.id!, { status: 'completed', updatedAt: new Date().toISOString() });
+            toast.success('Goal completed! 🏆');
+            setShowCompletePrompt(false);
+            onClose();
+          }}>Mark Complete</Button>
+        </div>
+      </Modal>
     </div>
   );
 }

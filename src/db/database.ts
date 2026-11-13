@@ -111,7 +111,7 @@ export async function exportAllData(): Promise<Record<string, unknown[]>> {
 export async function importAllData(data: Record<string, unknown[]>): Promise<void> {
   await db.transaction('rw', [
     db.settings, db.tasks, db.habits, db.habitCompletions, db.workouts,
-    db.workoutSets, db.bodyMeasurements, db.nutritionLogs, db.foodItems,
+    db.workoutSets, db.exercises, db.bodyMeasurements, db.nutritionLogs, db.foodItems,
     db.transactions, db.budgets, db.journalEntries, db.goals, db.milestones,
     db.reminders, db.learningItems, db.learningSessions,
   ], async () => {

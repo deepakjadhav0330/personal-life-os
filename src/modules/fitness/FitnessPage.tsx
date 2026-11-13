@@ -77,8 +77,13 @@ function BodyTab() {
   const saveMeasurement = async () => {
     const val = parseFloat(measureValue);
     if (!val || isNaN(val)) return;
+    const unitMap: Record<string, string> = {
+      weight: 'kg', body_fat: '%', waist: 'cm', chest: 'cm',
+      hips: 'cm', arms: 'cm', shoulders: 'cm', thighs: 'cm', neck: 'cm', custom: 'cm',
+    };
     await db.bodyMeasurements.add({
-      date: measureDate, type: measureType as any, value: val, unit: 'kg',
+      date: measureDate, type: measureType as any,
+      value: val, unit: unitMap[measureType] ?? 'cm',
       createdAt: new Date().toISOString(),
     });
     toast.success('Measurement saved!');
@@ -205,7 +210,7 @@ function WorkoutsTab() {
         <EmptyState icon={<Dumbbell size={24} />} title="No workouts logged yet" subtitle="Start a workout to track your progress" action={{ label: 'Start Now', onClick: () => setIsStarting(true) }} />
       ) : (
         <div className="flex flex-col gap-2">
-          {workouts.map(async (w) => <WorkoutCard key={w.id} workout={w} />)}
+          {workouts.map(w => <WorkoutCard key={w.id} workout={w} />)}
         </div>
       )}
 
@@ -290,12 +295,12 @@ function NutritionTab() {
   const totalFat = allFoods.reduce((s, f) => s + f.fat, 0);
   const water = log?.waterMl ?? 0;
 
-  const addWater = async () => {
+  const addWater = async (ml: number) => {
     const now = new Date().toISOString();
     if (!log?.id) {
-      await db.nutritionLogs.add({ date, meals: [], waterMl: 250, createdAt: now, updatedAt: now });
+      await db.nutritionLogs.add({ date, meals: [], waterMl: ml, createdAt: now, updatedAt: now });
     } else {
-      await db.nutritionLogs.update(log.id, { waterMl: (log.waterMl ?? 0) + 250, updatedAt: now });
+      await db.nutritionLogs.update(log.id, { waterMl: (log.waterMl ?? 0) + ml, updatedAt: now });
     }
   };
 
@@ -371,7 +376,7 @@ function NutritionTab() {
         <ProgressBar value={water} max={waterTarget} color="info" size="md" className="mb-3" />
         <div className="flex gap-2">
           {[250, 500].map(ml => (
-            <Button key={ml} variant="secondary" size="sm" onClick={addWater}>+{ml}ml</Button>
+            <Button key={ml} variant="secondary" size="sm" onClick={() => addWater(ml)}>+{ml}ml</Button>
           ))}
         </div>
       </GlassCard>

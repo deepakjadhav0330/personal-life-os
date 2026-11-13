@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, CheckSquare, Flame, Dumbbell,
-  DollarSign, BookOpen, Target, CalendarDays, Settings, Zap } from 'lucide-react';
+  DollarSign, BookOpen, Target, CalendarDays, Settings, GraduationCap, Zap } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 const navGroups = [
@@ -19,6 +19,7 @@ const navGroups = [
       { path: '/finance', label: 'Finance', icon: DollarSign },
       { path: '/journal', label: 'Journal', icon: BookOpen },
       { path: '/goals', label: 'Goals', icon: Target },
+      { path: '/learning', label: 'Learning', icon: GraduationCap },
       { path: '/calendar', label: 'Calendar', icon: CalendarDays },
     ],
   },

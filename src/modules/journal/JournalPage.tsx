@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Textarea, Input } from '../../components/ui';
+import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Textarea, Input, Modal } from '../../components/ui';
 import { toast } from '../../stores/useToastStore';
 import { todayStr, formatDate } from '../../utils/dates';
 import type { JournalMood } from '../../db/schema';
@@ -92,6 +92,8 @@ function JournalEntries() {
   };
 
   const saveEntry = async () => {
+    const hasContent = freeText.trim() || Object.values(templateAnswers).some(v => v?.trim()) || gratitude.some(g => g.trim()) || mood;
+    if (!hasContent) { toast.error('Add some content before saving'); return; }
     const wordCount = freeText.trim().split(/\s+/).filter(Boolean).length;
     const now = new Date().toISOString();
     const data = {
@@ -226,19 +228,13 @@ function JournalEntries() {
       </BottomSheet>
 
       {/* Delete confirm */}
-      {deletingId && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-space-950/80" onClick={() => setDeletingId(null)} />
-          <div className="relative glass-elevated rounded-modal p-5 max-w-sm w-full animate-scale-in">
-            <p className="font-semibold text-content-primary mb-2">Delete this entry?</p>
-            <p className="text-sm text-content-secondary mb-4">This cannot be undone.</p>
-            <div className="flex gap-3">
-              <Button variant="ghost" fullWidth onClick={() => setDeletingId(null)}>Cancel</Button>
-              <Button variant="danger" fullWidth onClick={deleteEntry}>Delete</Button>
-            </div>
-          </div>
+      <Modal open={!!deletingId} onClose={() => setDeletingId(null)} title="Delete entry?" size="sm">
+        <p className="text-sm text-content-secondary mb-4">This cannot be undone.</p>
+        <div className="flex gap-3">
+          <Button variant="ghost" fullWidth onClick={() => setDeletingId(null)}>Cancel</Button>
+          <Button variant="danger" fullWidth onClick={deleteEntry}>Delete</Button>
         </div>
-      )}
+      </Modal>
     </>
   );
 }

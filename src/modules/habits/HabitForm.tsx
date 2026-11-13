@@ -55,16 +55,15 @@ export function HabitForm({ habitId, onClose }: HabitFormProps) {
     setLoading(true);
     try {
       const count = await db.habits.count();
-      const data = {
+      const updateData = {
         name: name.trim(), description: description.trim() || undefined,
         category, frequency, color, icon, isActive: true as any,
-        order: habitId ? undefined : count,
       };
       if (habitId) {
-        await db.habits.update(habitId, data);
+        await db.habits.update(habitId, updateData); // never write order: undefined
         toast.success('Habit updated!');
       } else {
-        await db.habits.add({ ...data, order: count, createdAt: new Date().toISOString() });
+        await db.habits.add({ ...updateData, order: count, createdAt: new Date().toISOString() });
         toast.success('Habit created!');
       }
       onClose();

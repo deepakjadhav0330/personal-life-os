@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, CheckSquare, Flame, Dumbbell, Grid3X3,
-  DollarSign, BookOpen, Target, CalendarDays, Settings, ChevronRight } from 'lucide-react';
+  DollarSign, BookOpen, Target, CalendarDays, Settings, GraduationCap, ChevronRight } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { BottomSheet } from '../ui/BottomSheet';
 
@@ -17,7 +17,8 @@ const moreItems = [
   { path: '/finance', label: 'Finance', icon: DollarSign, color: '#22c55e' },
   { path: '/journal', label: 'Journal', icon: BookOpen, color: '#8b5cf6' },
   { path: '/goals', label: 'Goals', icon: Target, color: '#f59e0b' },
-  { path: '/calendar', label: 'Calendar', icon: CalendarDays, color: '#3b82f6' },
+  { path: '/learning', label: 'Learning', icon: GraduationCap, color: '#3b82f6' },
+  { path: '/calendar', label: 'Calendar', icon: CalendarDays, color: '#06b6d4' },
   { path: '/settings', label: 'Settings', icon: Settings, color: '#94a3b8' },
 ];
 

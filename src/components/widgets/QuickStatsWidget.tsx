@@ -63,7 +63,7 @@ export function QuickStatsWidget() {
       value: `${learningHoursThisWeek}h`,
       sub: 'this week',
       color: '#3b82f6',
-      path: '/journal',
+      path: '/learning',
     },
   ];
 

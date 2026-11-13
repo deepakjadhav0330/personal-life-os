@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
@@ -263,7 +263,7 @@ function TransactionForm({ txnId, onClose }: { txnId: number | null; onClose: ()
   const [loading, setLoading] = useState(false);
   const [currency] = useSetting('currency', 'INR');
 
-  useState(() => {
+  useEffect(() => {
     if (!txnId) return;
     db.transactions.get(txnId).then(txn => {
       if (!txn) return;
@@ -271,7 +271,7 @@ function TransactionForm({ txnId, onClose }: { txnId: number | null; onClose: ()
       setCategory(txn.category); setPaymentMethod(txn.paymentMethod);
       setDescription(txn.description ?? ''); setIsRecurring(txn.isRecurring);
     });
-  });
+  }, [txnId]);
 
   const handleSubmit = async () => {
     const amt = parseFloat(amount);

@@ -8,7 +8,7 @@ import { toast } from '../../stores/useToastStore';
 import type { Task } from '../../db/schema';
 import { todayStr, formatDateRelative, isOverdue } from '../../utils/dates';
 import { Plus, CheckCircle2, Trash2, Edit3, Search, X, AlertCircle } from 'lucide-react';
-import { format, addDays, parseISO } from 'date-fns';
+import { format, addDays, parseISO, addMonths } from 'date-fns';
 
 type Tab = 'today' | 'upcoming' | 'overdue' | 'all' | 'completed';
 
@@ -54,34 +54,44 @@ export function TasksPage() {
   const overdueCt = allTasks?.filter(t => t.status === 'pending' && t.dueDate && t.dueDate < today).length ?? 0;
 
   async function completeTask(task: Task) {
-    const now = new Date().toISOString();
-    await db.tasks.update(task.id!, { status: 'completed', completedAt: now, updatedAt: now });
-
-    // If recurring, create next instance
-    if (task.isRecurring && task.recurringFrequency && task.dueDate) {
-      const nextDate = task.recurringFrequency === 'daily'
-        ? format(addDays(parseISO(task.dueDate), 1), 'yyyy-MM-dd')
-        : task.recurringFrequency === 'weekly'
-          ? format(addDays(parseISO(task.dueDate), 7), 'yyyy-MM-dd')
-          : format(addDays(parseISO(task.dueDate), 30), 'yyyy-MM-dd');
-      await db.tasks.add({
-        ...task, id: undefined, status: 'pending', completedAt: undefined,
-        dueDate: nextDate, recurringParentId: task.id,
-        createdAt: now, updatedAt: now,
-      });
+    try {
+      const now = new Date().toISOString();
+      await db.tasks.update(task.id!, { status: 'completed', completedAt: now, updatedAt: now });
+      if (task.isRecurring && task.recurringFrequency && task.dueDate) {
+        const nextDate = task.recurringFrequency === 'daily'
+          ? format(addDays(parseISO(task.dueDate), 1), 'yyyy-MM-dd')
+          : task.recurringFrequency === 'weekly'
+            ? format(addDays(parseISO(task.dueDate), 7), 'yyyy-MM-dd')
+            : format(addMonths(parseISO(task.dueDate), 1), 'yyyy-MM-dd');
+        await db.tasks.add({
+          ...task, id: undefined, status: 'pending', completedAt: undefined,
+          dueDate: nextDate, recurringParentId: task.id,
+          createdAt: now, updatedAt: now,
+        });
+      }
+      toast.success('Task completed! 🎉');
+    } catch {
+      toast.error('Could not complete task');
     }
-    toast.success('Task completed! 🎉');
   }
 
   async function undoComplete(task: Task) {
-    await db.tasks.update(task.id!, { status: 'pending', completedAt: undefined, updatedAt: new Date().toISOString() });
+    try {
+      await db.tasks.update(task.id!, { status: 'pending', completedAt: undefined, updatedAt: new Date().toISOString() });
+    } catch {
+      toast.error('Could not undo');
+    }
   }
 
   async function deleteTask() {
     if (!deletingId) return;
-    await db.tasks.delete(deletingId);
-    setDeletingId(null);
-    toast.success('Task deleted');
+    try {
+      await db.tasks.delete(deletingId);
+      setDeletingId(null);
+      toast.success('Task deleted');
+    } catch {
+      toast.error('Could not delete task');
+    }
   }
 
   const tabs = [

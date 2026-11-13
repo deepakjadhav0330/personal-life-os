@@ -69,7 +69,7 @@ async function seedTasks() {
     { title: 'Review credit card statement', dueDate: fmt(subDays(today, 3)), priority: 'medium', category: 'finance', status: 'pending', isRecurring: false },
     { title: 'Deep clean apartment', dueDate: fmt(addDays(today, 6)), priority: 'low', category: 'personal', status: 'pending', isRecurring: false },
     { title: 'Learn TypeScript generics', dueDate: fmt(addDays(today, 4)), priority: 'medium', category: 'learning', status: 'pending', isRecurring: false },
-    { title: 'Weekly review', description: 'Review tasks, habits, and goals from past week', dueDate: fmt(addDays(today, 2)), priority: 'high', category: 'productivity', status: 'pending', isRecurring: true, recurringFrequency: 'weekly' },
+    { title: 'Weekly review', description: 'Review tasks, habits, and goals from past week', dueDate: fmt(addDays(today, 2)), priority: 'high', category: 'personal', status: 'pending', isRecurring: true, recurringFrequency: 'weekly' },
   ];
 
   const now = iso(today);
@@ -139,7 +139,7 @@ async function seedExercises() {
     { name: 'Face Pull', primaryMuscle: 'Back', secondaryMuscles: ['Rear Delts', 'Traps'], equipment: 'cable', type: 'isolation', instructions: 'Attach rope to high cable. Pull to face, elbows flare.', isCustom: false },
     { name: 'Hyperextension', primaryMuscle: 'Back', secondaryMuscles: ['Glutes', 'Hamstrings'], equipment: 'machine', type: 'isolation', instructions: 'Hinge at extension bench. Lower then raise torso.', isCustom: false },
     // Shoulders
-    { name: 'Overhead Press', primaryMuscle: 'Shoulders', secondaryMuscles: ['Triceps', 'Upper Traps'], equipment: 'barbell', type: 'compound', instructions: 'Press bar from front rack overhead, fully extend arms.', isCustomy: false, isCustom: false },
+    { name: 'Overhead Press', primaryMuscle: 'Shoulders', secondaryMuscles: ['Triceps', 'Upper Traps'], equipment: 'barbell', type: 'compound', instructions: 'Press bar from front rack overhead, fully extend arms.', isCustom: false },
     { name: 'Dumbbell Lateral Raise', primaryMuscle: 'Shoulders', secondaryMuscles: [], equipment: 'dumbbell', type: 'isolation', instructions: 'Raise arms to sides to shoulder height, slight elbow bend.', isCustom: false },
     { name: 'Arnold Press', primaryMuscle: 'Shoulders', secondaryMuscles: ['Triceps'], equipment: 'dumbbell', type: 'compound', instructions: 'Start palms facing you. Rotate and press dumbbells overhead.', isCustom: false },
     { name: 'Rear Delt Flye', primaryMuscle: 'Shoulders', secondaryMuscles: ['Traps'], equipment: 'dumbbell', type: 'isolation', instructions: 'Hinge 45° forward. Raise dumbbells to sides.', isCustom: false },
@@ -400,7 +400,7 @@ async function seedGoals() {
 async function seedReminders() {
   await db.reminders.bulkAdd([
     { title: 'Take vitamins', description: 'Vitamin D + B12', scheduledAt: iso(addDays(today, 1)), repeat: 'daily', type: 'general', status: 'pending', createdAt: iso(today) },
-    { title: 'Evening gym session', scheduledAt: new Date(today.setHours(18, 0, 0, 0)).toISOString(), repeat: 'once', type: 'general', status: 'pending', createdAt: iso(today) },
+    { title: 'Evening gym session', scheduledAt: new Date(new Date().setHours(18, 0, 0, 0)).toISOString(), repeat: 'once', type: 'general', status: 'pending', createdAt: iso(today) },
     { title: 'Call mom', scheduledAt: iso(addDays(today, 1)), repeat: 'once', type: 'general', status: 'pending', createdAt: iso(today) },
     { title: 'Rent payment due', scheduledAt: iso(addDays(today, 5)), repeat: 'monthly', type: 'general', status: 'pending', createdAt: iso(today) },
     { title: 'Team retrospective meeting', scheduledAt: iso(addDays(today, 3)), repeat: 'once', type: 'task', status: 'pending', createdAt: iso(today) },

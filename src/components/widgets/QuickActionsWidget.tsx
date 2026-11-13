@@ -36,7 +36,7 @@ export function QuickActionsWidget() {
 
   const handleAction = (id: string) => {
     if (id === 'journal') { navigate('/journal'); return; }
-    if (id === 'workout') { navigate('/fitness/workouts'); return; }
+    if (id === 'workout') { navigate('/fitness'); return; }
     if (id === 'habit') { navigate('/habits'); return; }
     setActiveAction(id);
   };

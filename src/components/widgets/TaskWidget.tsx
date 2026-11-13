@@ -13,7 +13,11 @@ export function TaskWidget() {
     () => db.tasks
       .where('status').equals('pending')
       .filter(t => t.dueDate === today)
-      .sortBy('priority'),
+      .toArray()
+      .then(tasks => tasks.sort((a, b) => {
+        const order = { high: 0, medium: 1, low: 2 };
+        return (order[a.priority] ?? 2) - (order[b.priority] ?? 2);
+      })),
     [today],
     [],
   );

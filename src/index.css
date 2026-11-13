@@ -39,6 +39,10 @@
     flex-direction: column;
     position: relative;
     z-index: 0;
+    /* Push ALL app content below the iOS status bar in standalone PWA mode.
+       Using #root (not body) so the dark background behind the status bar
+       is still the body colour, while content starts below it.          */
+    padding-top: env(safe-area-inset-top);
   }
 
   /* ── Scrollbars ── */

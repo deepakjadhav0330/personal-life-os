@@ -11,7 +11,14 @@ const fmt = (d: Date) => format(d, 'yyyy-MM-dd');
 const iso = (d: Date) => d.toISOString();
 
 export async function seedDatabase(): Promise<void> {
-  // Don't re-seed if the user has explicitly cleared their data
+  // Check DB-level flag first (works in BOTH Safari and installed PWA
+  // since they share IndexedDB for the same origin on iOS 15.4+).
+  try {
+    const skipFlag = await db.settings.where('key').equals('skipSeed').first();
+    if (skipFlag) return;
+  } catch { /* DB might not exist yet — continue to seed */ }
+
+  // Legacy localStorage guard (kept for backwards compatibility)
   if (localStorage.getItem('lifeOS_userCleared') === 'true') return;
 
   // Guard — only seed if the DB is empty

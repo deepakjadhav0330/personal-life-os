@@ -104,7 +104,13 @@ export function SettingsPage() {
   const clearAllData = async () => {
     if (clearInput !== 'DELETE MY DATA') { toast.error('Type DELETE MY DATA exactly'); return; }
     try {
-      await db.delete(); // delete DB first — if this fails, localStorage flag is NOT set
+      await db.delete();
+      // Re-open the fresh database and immediately write the skip-seed flag
+      // so neither Safari NOR the installed PWA re-seeds on the next open.
+      await db.open();
+      const now = new Date().toISOString();
+      await db.settings.add({ key: 'skipSeed', value: JSON.stringify(true), updatedAt: now });
+      // Keep localStorage flag as well for older iOS versions
       localStorage.setItem('lifeOS_userCleared', 'true');
       toast.success('All data cleared');
       window.location.reload();

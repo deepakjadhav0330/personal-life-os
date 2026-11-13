@@ -24,7 +24,7 @@ export function PageHeader({ title, subtitle, back, rightAction, showNotificatio
   );
 
   return (
-    <div className={cn('flex items-center gap-3 pt-safe px-4 py-3', className)}>
+    <div className={cn('flex items-center gap-3 px-4 py-3', className)}>
       {back && (
         <button
           onClick={() => navigate(-1)}

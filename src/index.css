@@ -27,17 +27,10 @@
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior: none;
 
-    /* ── Deep base ── */
+    /* Base colour only — ambient blobs are rendered by the
+       AmbientBackground React component (fixed position) so
+       they work correctly on iOS Safari.                    */
     background-color: #06060f;
-
-    /* ── Ambient light blobs — the foundation of Liquid Glass.
-          Glass surfaces blur and saturate these colours, making
-          each card feel like it's truly refracting light.      ── */
-    background-image:
-      radial-gradient(ellipse 75% 55% at 10% 0%,   rgba(124, 58, 237, 0.22) 0%, transparent 55%),
-      radial-gradient(ellipse 55% 65% at 90% 95%,  rgba(99,  102, 241, 0.18) 0%, transparent 55%),
-      radial-gradient(ellipse 45% 45% at 55% 48%,  rgba(139, 92,  246, 0.07) 0%, transparent 65%);
-    background-attachment: fixed;
   }
 
   #root {
@@ -85,63 +78,63 @@
   .glass-1 {
     background: linear-gradient(
       145deg,
-      rgba(255, 255, 255, 0.075) 0%,
-      rgba(255, 255, 255, 0.040) 100%
+      rgba(190, 170, 255, 0.09) 0%,
+      rgba(130, 110, 255, 0.045) 100%
     );
-    -webkit-backdrop-filter: blur(32px) saturate(240%) brightness(1.06);
-    backdrop-filter: blur(32px) saturate(240%) brightness(1.06);
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    border-top-color: rgba(255, 255, 255, 0.22);
+    -webkit-backdrop-filter: blur(32px) saturate(260%) brightness(1.08);
+    backdrop-filter: blur(32px) saturate(260%) brightness(1.08);
+    border: 1px solid rgba(200, 180, 255, 0.10);
+    border-top-color: rgba(220, 200, 255, 0.24);
     box-shadow:
       0 4px 24px rgba(0, 0, 0, 0.30),
-      inset 0 1px 0 rgba(255, 255, 255, 0.10),
+      inset 0 1px 0 rgba(220, 200, 255, 0.12),
       inset 0 -1px 0 rgba(0, 0, 0, 0.12);
   }
 
   .glass-2 {
     background: linear-gradient(
       145deg,
-      rgba(255, 255, 255, 0.11) 0%,
-      rgba(255, 255, 255, 0.06) 100%
+      rgba(200, 180, 255, 0.13) 0%,
+      rgba(140, 120, 255, 0.07) 100%
     );
-    -webkit-backdrop-filter: blur(32px) saturate(260%) brightness(1.10);
-    backdrop-filter: blur(32px) saturate(260%) brightness(1.10);
-    border: 1px solid rgba(255, 255, 255, 0.11);
-    border-top-color: rgba(255, 255, 255, 0.28);
+    -webkit-backdrop-filter: blur(32px) saturate(280%) brightness(1.12);
+    backdrop-filter: blur(32px) saturate(280%) brightness(1.12);
+    border: 1px solid rgba(200, 180, 255, 0.13);
+    border-top-color: rgba(220, 200, 255, 0.30);
     box-shadow:
       0 8px 32px rgba(0, 0, 0, 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      inset 0 1px 0 rgba(220, 200, 255, 0.16),
       inset 0 -1px 0 rgba(0, 0, 0, 0.14);
   }
 
   .glass-elevated {
     background: linear-gradient(
       145deg,
-      rgba(255, 255, 255, 0.16) 0%,
-      rgba(255, 255, 255, 0.07) 100%
+      rgba(210, 190, 255, 0.18) 0%,
+      rgba(150, 130, 255, 0.09) 100%
     );
-    -webkit-backdrop-filter: blur(40px) saturate(280%) brightness(1.14);
-    backdrop-filter: blur(40px) saturate(280%) brightness(1.14);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-top-color: rgba(255, 255, 255, 0.36);
+    -webkit-backdrop-filter: blur(40px) saturate(300%) brightness(1.16);
+    backdrop-filter: blur(40px) saturate(300%) brightness(1.16);
+    border: 1px solid rgba(210, 190, 255, 0.17);
+    border-top-color: rgba(230, 210, 255, 0.38);
     box-shadow:
       0 12px 48px rgba(0, 0, 0, 0.45),
       0 2px 8px  rgba(0, 0, 0, 0.25),
-      inset 0 1px 0 rgba(255, 255, 255, 0.20),
+      inset 0 1px 0 rgba(230, 210, 255, 0.22),
       inset 0 -1px 0 rgba(0, 0, 0, 0.16);
   }
 
-  /* Navigation pill — darker to contrast content, still glassy */
+  /* Navigation pill — darker so content is readable */
   .glass-nav {
-    background: rgba(8, 8, 20, 0.70);
-    -webkit-backdrop-filter: blur(40px) saturate(220%) brightness(0.92);
-    backdrop-filter: blur(40px) saturate(220%) brightness(0.92);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-top-color: rgba(255, 255, 255, 0.24);
+    background: rgba(8, 6, 22, 0.75);
+    -webkit-backdrop-filter: blur(40px) saturate(240%) brightness(0.90);
+    backdrop-filter: blur(40px) saturate(240%) brightness(0.90);
+    border: 1px solid rgba(180, 160, 255, 0.14);
+    border-top-color: rgba(200, 180, 255, 0.26);
     box-shadow:
       0 -2px 20px rgba(0, 0, 0, 0.18),
       0 8px 32px rgba(0, 0, 0, 0.35),
-      inset 0 1px 0 rgba(255, 255, 255, 0.11);
+      inset 0 1px 0 rgba(200, 180, 255, 0.11);
   }
 
   /* Input fields — subtle, doesn't compete with card glass */

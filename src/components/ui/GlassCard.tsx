@@ -42,12 +42,12 @@ export function GlassCard({
         className,
       )}
     >
-      {/* Subtle directional-light overlay — simulates glass catching light
-          from the top-left, fades toward bottom-right.               */}
+      {/* Directional-light overlay — violet-tinted to match ambient background,
+          simulates light refracting from top-left through glass.          */}
       <div
         className="pointer-events-none absolute inset-0 rounded-card"
         style={{
-          background: 'linear-gradient(145deg, rgba(255,255,255,0.045) 0%, transparent 55%)',
+          background: 'linear-gradient(145deg, rgba(190,160,255,0.055) 0%, transparent 55%)',
         }}
       />
       {/* Content sits above the overlay */}

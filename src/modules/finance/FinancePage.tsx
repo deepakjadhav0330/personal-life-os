@@ -4,12 +4,13 @@ import { useLocation } from 'react-router-dom';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Modal, Input, Select, Toggle, IconButton } from '../../components/ui';
+import { ReceiptScanner } from '../../components/finance/ReceiptScanner';
 import { toast } from '../../stores/useToastStore';
 import { useSetting } from '../../hooks/useSetting';
 import { formatCurrency } from '../../utils/format';
 import { todayStr, formatDate } from '../../utils/dates';
 import type { PaymentMethod } from '../../db/schema';
-import { Plus, TrendingUp, TrendingDown, Wallet, PieChart, Trash2, Edit3 } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Wallet, PieChart, Trash2, Edit3, Camera } from 'lucide-react';
 import { PieChart as RePie, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis } from 'recharts';
 import { startOfMonth, endOfMonth, format as dateFmt, subMonths } from 'date-fns';
 
@@ -37,9 +38,11 @@ export function FinancePage() {
   const [activeTab, setActiveTab] = useState<FinanceTab>('overview');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [addType, setAddType] = useState<'expense' | 'income'>('expense');
+  const [isScanOpen, setIsScanOpen] = useState(false);
+  const [scanPrefill, setScanPrefill] = useState<{ amount?: number; description?: string; category?: string } | null>(null);
+  const [currency] = useSetting('currency', 'INR');
   const location = useLocation();
 
-  // Auto-open from iOS Shortcuts ?action=expense / ?action=income
   useEffect(() => {
     const a = location.state?.autoOpen;
     if (a === 'expense' || a === 'income') {
@@ -51,10 +54,23 @@ export function FinancePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleScanResult = (data: { amount: number; description: string; category: string }) => {
+    setScanPrefill(data);
+    setIsScanOpen(false);
+    setAddType('expense');
+    setIsAddOpen(true);
+    setActiveTab('transactions');
+  };
+
   return (
     <div className="min-h-screen-dvh">
       <PageHeader title="Finance" rightAction={
-        <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setIsAddOpen(true)}>Add</Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" leftIcon={<Camera size={14} />} onClick={() => setIsScanOpen(true)}>
+            Scan
+          </Button>
+          <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setIsAddOpen(true)}>Add</Button>
+        </div>
       } />
       <div className="px-4 pb-4 flex flex-col gap-3">
         <Tabs
@@ -67,9 +83,18 @@ export function FinancePage() {
         {activeTab === 'budgets' && <BudgetsTab />}
       </div>
 
-      {/* Quick-add from header or Shortcut — always routes to Transactions tab form */}
-      <BottomSheet open={isAddOpen && activeTab !== 'transactions'} onClose={() => setIsAddOpen(false)} title="Add Transaction" snapPoints>
-        <TransactionForm txnId={null} initialType={addType} onClose={() => setIsAddOpen(false)} />
+      {/* Receipt scanner */}
+      <BottomSheet open={isScanOpen} onClose={() => setIsScanOpen(false)} title="Scan Receipt" snapPoints>
+        <ReceiptScanner
+          currency={currency}
+          onResult={handleScanResult}
+          onClose={() => setIsScanOpen(false)}
+        />
+      </BottomSheet>
+
+      {/* Quick-add from header or Shortcut */}
+      <BottomSheet open={isAddOpen && activeTab !== 'transactions'} onClose={() => { setIsAddOpen(false); setScanPrefill(null); }} title="Add Transaction" snapPoints>
+        <TransactionForm txnId={null} initialType={addType} prefill={scanPrefill ?? undefined} onClose={() => { setIsAddOpen(false); setScanPrefill(null); }} />
       </BottomSheet>
     </div>
   );
@@ -277,13 +302,18 @@ function TransactionsTab({ externalAddOpen, onExternalAddClose }: { externalAddO
   );
 }
 
-function TransactionForm({ txnId, onClose, initialType }: { txnId: number | null; onClose: () => void; initialType?: 'expense' | 'income' }) {
+function TransactionForm({ txnId, onClose, initialType, prefill }: { 
+  txnId: number | null; 
+  onClose: () => void; 
+  initialType?: 'expense' | 'income';
+  prefill?: { amount?: number; description?: string; category?: string };
+}) {
   const [type, setType] = useState<'income' | 'expense'>(initialType ?? 'expense');
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState(prefill?.amount ? String(prefill.amount) : '');
   const [date, setDate] = useState(todayStr());
-  const [category, setCategory] = useState('food');
+  const [category, setCategory] = useState(prefill?.category ?? 'food');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('upi');
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState(prefill?.description ?? '');
   const [isRecurring, setIsRecurring] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currency] = useSetting('currency', 'INR');
@@ -296,9 +326,7 @@ function TransactionForm({ txnId, onClose, initialType }: { txnId: number | null
       setCategory(txn.category); setPaymentMethod(txn.paymentMethod);
       setDescription(txn.description ?? ''); setIsRecurring(txn.isRecurring);
     });
-  }, [txnId]);
-
-  const handleSubmit = async () => {
+  }, [txnId]);  const handleSubmit = async () => {
     const amt = parseFloat(amount);
     if (!amt || isNaN(amt)) { toast.error('Enter a valid amount'); return; }
     setLoading(true);

@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useSetting } from '../../hooks/useSetting';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard } from '../../components/ui';
@@ -46,9 +46,6 @@ export function DashboardPage() {
   const location = useLocation();
   const quickAddText: string | undefined = location.state?.quickAdd;
   const nudges = useSmartNudges();
-  const [notifOpen, setNotifOpen] = useState(false);
-
-  // Dismissed nudges counted separately from pending reminders
   const activeNudgeCount = nudges.length;
 
   // Clear the state so it doesn't persist on subsequent renders
@@ -71,13 +68,7 @@ export function DashboardPage() {
 
   return (
     <div className="min-h-screen-dvh">
-      <PageHeader
-        title="Life OS"
-        showNotifications
-        nudgeCount={activeNudgeCount}
-        onBellClick={() => setNotifOpen(true)}
-        large
-      />
+      <PageHeader title="Life OS" showNotifications nudgeCount={activeNudgeCount} large />
       <div className="px-4 pb-4 flex flex-col gap-3">
 
         {hasData === false ? (
@@ -98,12 +89,8 @@ export function DashboardPage() {
         )}
       </div>
 
-      {/* Notification center — bell icon opens this */}
-      <NotificationCenter
-        open={notifOpen}
-        onClose={() => setNotifOpen(false)}
-        nudges={nudges}
-      />
+      {/* Notification center — bell icon opens this via useNotificationStore */}
+      <NotificationCenter nudges={nudges} />
     </div>
   );
 }

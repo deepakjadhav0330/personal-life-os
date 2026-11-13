@@ -4,6 +4,7 @@ import { ArrowLeft, Bell } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/database';
+import { useNotificationStore } from '../../stores/useNotificationStore';
 
 interface PageHeaderProps {
   title: string;
@@ -11,20 +12,18 @@ interface PageHeaderProps {
   back?: boolean;
   rightAction?: React.ReactNode;
   showNotifications?: boolean;
-  /** Extra badge count to add to the bell (e.g. active nudge count) */
   nudgeCount?: number;
-  /** Override the default bell behaviour — if provided, calls this instead of navigating */
-  onBellClick?: () => void;
   className?: string;
   large?: boolean;
 }
 
 export function PageHeader({
   title, subtitle, back, rightAction,
-  showNotifications, nudgeCount = 0, onBellClick,
+  showNotifications, nudgeCount = 0,
   className, large,
 }: PageHeaderProps) {
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
+  const { toggle } = useNotificationStore();
 
   const pendingReminders = useLiveQuery(
     () => db.reminders.where('status').equals('pending').count(),
@@ -33,11 +32,6 @@ export function PageHeader({
   );
 
   const totalBadge = (pendingReminders ?? 0) + nudgeCount;
-
-  const handleBell = () => {
-    if (onBellClick) onBellClick();
-    else navigate('/calendar');
-  };
 
   return (
     <div className={cn('flex items-center gap-3 px-4 py-3', className)}>
@@ -58,8 +52,8 @@ export function PageHeader({
       </div>
       {showNotifications && (
         <button
-          onClick={handleBell}
-          aria-label={`Notifications${totalBadge > 0 ? ` (${totalBadge} unread)` : ''}`}
+          onClick={toggle}
+          aria-label={`Notifications${totalBadge > 0 ? ` — ${totalBadge} unread` : ''}`}
           className="relative p-2 rounded-input glass-1 text-content-secondary hover:text-content-primary transition-colors min-h-touch min-w-touch flex items-center justify-center"
         >
           <Bell size={18} />

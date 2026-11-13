@@ -8,14 +8,14 @@ import { formatDate } from '../../utils/dates';
 import type { Nudge } from '../../hooks/useSmartNudges';
 import { getDismissed, persistDismiss } from '../../hooks/useSmartNudges';
 import { toast } from '../../stores/useToastStore';
+import { useNotificationStore } from '../../stores/useNotificationStore';
 
 interface NotificationCenterProps {
-  open: boolean;
-  onClose: () => void;
   nudges: Nudge[];
 }
 
-export function NotificationCenter({ open, onClose, nudges }: NotificationCenterProps) {
+export function NotificationCenter({ nudges }: NotificationCenterProps) {
+  const { isOpen, close } = useNotificationStore();
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState<Set<string>>(getDismissed);
 
@@ -38,7 +38,7 @@ export function NotificationCenter({ open, onClose, nudges }: NotificationCenter
 
   const goTo = (path: string) => {
     navigate(path);
-    onClose();
+    close();
   };
 
   const dismissReminder = async (id: number) => {
@@ -47,7 +47,7 @@ export function NotificationCenter({ open, onClose, nudges }: NotificationCenter
   };
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="Notifications" snapPoints>
+    <BottomSheet open={isOpen} onClose={close} title="Notifications" snapPoints>
       {!hasAnything ? (
         <EmptyState
           icon={<Check size={24} />}

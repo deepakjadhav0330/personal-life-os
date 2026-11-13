@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { addMonths } from 'date-fns';
 import { AppLayout } from './components/layout/AppLayout';
+import { AmbientBackground } from './components/layout/AmbientBackground';
 import { ToastContainer } from './components/ui';
 import { DashboardPage } from './modules/dashboard/DashboardPage';
 import { TasksPage } from './modules/tasks/TasksPage';
@@ -26,6 +27,9 @@ export function App() {
 
   return (
     <HashRouter>
+      {/* z-index:-1 keeps blobs behind all content without creating
+          a stacking context that would trap modal/sheet z-indices    */}
+      <AmbientBackground />
       <ToastContainer />
       <Routes>
         <Route path="/" element={<AppLayout />}>

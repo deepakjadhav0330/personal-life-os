@@ -69,7 +69,7 @@ export function QuickStatsWidget() {
 
   return (
     <GlassCard>
-      <p className="text-xs font-semibold text-content-muted uppercase tracking-wide mb-3">Quick Stats</p>
+      <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">Quick Stats</p>
       <div className="grid grid-cols-2 gap-2">
         {stats.map(stat => (
           <button

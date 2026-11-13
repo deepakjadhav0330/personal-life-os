@@ -185,7 +185,8 @@
   /* ── Typography helpers ── */
   .text-primary { color: #f0f0ff; }
   .text-secondary { color: #a0a0c0; }
-  .text-muted { color: #606080; }
+  /* Brightened from #606080 → #7f7fa8 to pass WCAG AA 4.5:1 against #06060f */
+  .text-muted { color: #7f7fa8; }
 
   /* ── Category colours ── */
   .category-personal    { @apply bg-purple-500/15 text-purple-300; }

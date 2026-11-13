@@ -14,3 +14,6 @@ export { Tabs } from './Tabs';
 export { ToastContainer } from './Toast';
 export { Avatar } from './Avatar';
 export { Toggle } from './Toggle';
+export { IconButton } from './IconButton';
+export { SectionHeader } from './SectionHeader';
+export { GlassTooltip } from './GlassTooltip';

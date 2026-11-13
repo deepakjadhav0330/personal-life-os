@@ -21,8 +21,7 @@ export function JournalPage() {
   return (
     <div className="min-h-screen-dvh">
       <PageHeader title="Journal" />
-      <div className="px-4 pb-4 flex flex-col gap-3">
-        <Tabs
+      <div className="px-4 pb-4 flex flex-col gap-3">        <Tabs
           tabs={[
             { id: 'entries', label: 'Journal', icon: <BookOpen size={12} /> },
             { id: 'reflect', label: 'Reflect', icon: <Lightbulb size={12} /> },
@@ -191,12 +190,12 @@ function JournalEntries() {
           <div>
             <label className="text-xs font-medium text-content-secondary uppercase tracking-wide mb-2 block">Grateful for</label>
             {[0, 1, 2].map(i => (
-              <input
+              <Input
                 key={i}
-                className="w-full h-10 rounded-input glass-input text-content-primary placeholder:text-content-muted px-3 text-sm mb-2"
                 placeholder={`${i + 1}. I'm grateful for…`}
                 value={gratitude[i]}
                 onChange={e => { const g = [...gratitude]; g[i] = e.target.value; setGratitude(g); }}
+                wrapperClassName="mb-2"
               />
             ))}
           </div>

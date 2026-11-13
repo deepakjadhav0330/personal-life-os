@@ -9,6 +9,7 @@ import { todayStr } from '../../utils/dates';
 import { calculateStreak, completionRate } from '../../utils/habits';
 import type { Habit } from '../../db/schema';
 import { Plus, Check, Flame, BarChart3, Trash2, Edit3 } from 'lucide-react';
+import { IconButton } from '../../components/ui';
 import { format, subDays } from 'date-fns';
 
 export function HabitsPage() {
@@ -150,12 +151,8 @@ export function HabitsPage() {
 
                       {/* Actions */}
                       <div className="flex gap-1">
-                        <button onClick={() => { setEditingId(habit.id!); setIsFormOpen(true); }} className="p-1.5 rounded-lg glass-1 text-content-muted hover:text-content-primary">
-                          <Edit3 size={13} />
-                        </button>
-                        <button onClick={() => setDeletingId(habit.id!)} className="p-1.5 rounded-lg glass-1 text-content-muted hover:text-danger">
-                          <Trash2 size={13} />
-                        </button>
+                        <IconButton icon={<Edit3 size={13} />} label={`Edit ${habit.name}`} onClick={() => { setEditingId(habit.id!); setIsFormOpen(true); }} />
+                        <IconButton icon={<Trash2 size={13} />} label={`Archive ${habit.name}`} onClick={() => setDeletingId(habit.id!)} variant="danger" />
                       </div>
                     </div>
                   </GlassCard>

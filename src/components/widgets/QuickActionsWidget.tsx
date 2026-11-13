@@ -91,22 +91,29 @@ export function QuickActionsWidget() {
     <>
       <GlassCard padding="sm">
         <p className="text-xs font-semibold text-content-muted uppercase tracking-wide mb-3 px-1">Quick Actions</p>
-        <div className="flex gap-3 overflow-x-auto scroll-smooth-snap pb-1">
-          {actions.map(action => (
-            <button
-              key={action.id}
-              onClick={() => handleAction(action.id)}
-              className="flex flex-col items-center gap-2 shrink-0 min-w-[64px]"
-            >
-              <div
-                className="w-14 h-14 rounded-xl flex items-center justify-center transition-transform active:scale-95"
-                style={{ background: `${action.color}18`, border: `1px solid ${action.color}30`, borderTopColor: `${action.color}60` }}
+        <div className="relative">
+          <div className="flex gap-3 overflow-x-auto scroll-smooth-snap pb-1 pr-8">
+            {actions.map(action => (
+              <button
+                key={action.id}
+                onClick={() => handleAction(action.id)}
+                className="flex flex-col items-center gap-2 shrink-0 min-w-[64px]"
               >
-                <action.icon size={22} style={{ color: action.color }} />
-              </div>
-              <span className="text-[10px] text-content-muted text-center leading-tight">{action.label}</span>
-            </button>
-          ))}
+                <div
+                  className="w-14 h-14 rounded-xl flex items-center justify-center transition-transform active:scale-95"
+                  style={{ background: `${action.color}18`, border: `1px solid ${action.color}30`, borderTopColor: `${action.color}60` }}
+                >
+                  <action.icon size={22} style={{ color: action.color }} />
+                </div>
+                <span className="text-[10px] text-content-muted text-center leading-tight">{action.label}</span>
+              </button>
+            ))}
+          </div>
+          {/* Fade gradient — indicates more items off-screen */}
+          <div
+            className="absolute right-0 top-0 bottom-1 w-10 pointer-events-none"
+            style={{ background: 'linear-gradient(to right, transparent, rgba(6,6,15,0.9))' }}
+          />
         </div>
       </GlassCard>
 

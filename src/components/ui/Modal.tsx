@@ -50,7 +50,8 @@ export function Modal({ open, onClose, title, children, size = 'md', hideClose, 
             {!hideClose && (
               <button
                 onClick={onClose}
-                className="ml-auto p-1.5 rounded-lg glass-1 text-content-muted hover:text-content-primary transition-colors"
+                aria-label="Close"
+                className="ml-auto w-9 h-9 flex items-center justify-center rounded-input glass-1 text-content-muted hover:text-content-primary transition-colors"
               >
                 <X size={16} />
               </button>

@@ -11,6 +11,7 @@ import { todayStr, formatDate } from '../../utils/dates';
 import { formatMinutes } from '../../utils/format';
 import type { LearningItem, LearningItemType, LearningStatus } from '../../db/schema';
 import { BookOpen, GraduationCap, Zap, Plus, Clock, Edit3, Trash2 } from 'lucide-react';
+import { IconButton } from '../../components/ui';
 
 const TYPE_CONFIG = {
   book:   { icon: BookOpen,       label: 'Book',   color: '#f59e0b' },
@@ -147,8 +148,8 @@ export function LearningPage() {
                       </div>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <button onClick={e => { e.stopPropagation(); setEditingId(item.id!); setIsFormOpen(true); }} className="p-1.5 glass-1 rounded text-content-muted hover:text-content-primary"><Edit3 size={12} /></button>
-                      <button onClick={e => { e.stopPropagation(); setDeletingId(item.id!); }} className="p-1.5 glass-1 rounded text-content-muted hover:text-danger"><Trash2 size={12} /></button>
+                      <IconButton icon={<Edit3 size={13} />} label={`Edit ${item.title}`} onClick={e => { e.stopPropagation(); setEditingId(item.id!); setIsFormOpen(true); }} />
+                      <IconButton icon={<Trash2 size={13} />} label={`Delete ${item.title}`} onClick={e => { e.stopPropagation(); setDeletingId(item.id!); }} variant="danger" />
                     </div>
                   </div>
                 </GlassCard>
@@ -300,9 +301,12 @@ function LearningForm({ itemId, onClose }: { itemId: number | null; onClose: () 
         </div>
       </div>
 
-      <Button variant="primary" onClick={save} loading={loading}>
-        {itemId ? 'Update' : 'Add Item'}
-      </Button>
+      <div className="flex gap-3">
+        <Button variant="ghost" fullWidth onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={save} loading={loading}>
+          {itemId ? 'Update' : 'Add Item'}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -448,12 +452,11 @@ function LearningDetail({
             </div>
           ))}
           <div className="flex gap-2 mt-2">
-            <input
-              className="flex-1 h-9 rounded-input glass-input text-content-primary placeholder:text-content-muted px-3 text-sm"
-              placeholder="Add a key takeaway…"
+            <Input
               value={newTakeaway}
               onChange={e => setNewTakeaway(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addTakeaway()}
+              placeholder="Add a key takeaway…"
+              onKeyDown={(e: React.KeyboardEvent) => e.key === 'Enter' && addTakeaway()}
             />
             <Button variant="primary" size="sm" onClick={addTakeaway} disabled={!newTakeaway.trim()}>Add</Button>
           </div>

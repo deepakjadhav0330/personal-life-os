@@ -11,9 +11,15 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday
 
 export function CalendarPage() {
   const [activeTab, setActiveTab] = useState<'month' | 'agenda' | 'reminders'>('month');
+  const [isAddingReminder, setIsAddingReminder] = useState(false);
+
   return (
     <div className="min-h-screen-dvh">
-      <PageHeader title="Calendar" />
+      <PageHeader title="Calendar" rightAction={
+        <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => { setActiveTab('reminders'); setIsAddingReminder(true); }}>
+          Reminder
+        </Button>
+      } />
       <div className="px-4 pb-4 flex flex-col gap-3">
         <Tabs
           tabs={[{ id: 'month', label: 'Month' }, { id: 'agenda', label: 'Agenda' }, { id: 'reminders', label: 'Reminders' }]}
@@ -22,7 +28,7 @@ export function CalendarPage() {
         />
         {activeTab === 'month' && <MonthView />}
         {activeTab === 'agenda' && <AgendaView />}
-        {activeTab === 'reminders' && <RemindersView />}
+        {activeTab === 'reminders' && <RemindersView externalAddOpen={isAddingReminder} onExternalAddClose={() => setIsAddingReminder(false)} />}
       </div>
     </div>
   );
@@ -181,7 +187,7 @@ function AgendaView() {
   );
 }
 
-function RemindersView() {
+function RemindersView({ externalAddOpen, onExternalAddClose }: { externalAddOpen?: boolean; onExternalAddClose?: () => void }) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [scheduledDate, setScheduledDate] = useState(todayStr());
@@ -189,6 +195,9 @@ function RemindersView() {
   const [repeat, setRepeat] = useState<'once' | 'daily' | 'weekly' | 'monthly'>('once');
 
   const reminders = useLiveQuery(() => db.reminders.orderBy('scheduledAt').toArray(), [], []);
+
+  const isSheetOpen = isFormOpen || !!externalAddOpen;
+  const closeSheet = () => { setIsFormOpen(false); onExternalAddClose?.(); };
 
   const saveReminder = async () => {
     if (!title.trim()) return;
@@ -199,7 +208,7 @@ function RemindersView() {
       createdAt: new Date().toISOString(),
     });
     toast.success('Reminder set!');
-    setTitle(''); setIsFormOpen(false);
+    setTitle(''); closeSheet();
   };
 
   const dismiss = async (id: number) => {
@@ -226,7 +235,9 @@ function RemindersView() {
                 </div>
                 <div className="flex gap-1">
                   <Badge variant={r.status === 'pending' ? 'accent' : 'default'} size="xs">{r.status}</Badge>
-                  <button onClick={() => dismiss(r.id!)} className="p-1 glass-1 rounded text-content-muted hover:text-warning text-xs">Dismiss</button>
+                  <button onClick={() => dismiss(r.id!)} className="w-9 h-9 flex items-center justify-center glass-1 rounded-input text-content-muted hover:text-warning text-xs" aria-label="Dismiss reminder">
+                    Dismiss
+                  </button>
                 </div>
               </div>
             </GlassCard>
@@ -234,7 +245,10 @@ function RemindersView() {
         </div>
       )}
 
-      <BottomSheet open={isFormOpen} onClose={() => setIsFormOpen(false)} title="Add Reminder">
+      <div className="flex justify-end">
+        <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setIsFormOpen(true)}>Add Reminder</Button>
+      </div>
+      <BottomSheet open={isSheetOpen} onClose={closeSheet} title="Add Reminder">
         <div className="flex flex-col gap-4">
           <Input label="Title *" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Take vitamins" autoFocus />
           <div className="grid grid-cols-2 gap-3">

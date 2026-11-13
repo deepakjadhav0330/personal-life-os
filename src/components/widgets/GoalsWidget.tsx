@@ -32,7 +32,7 @@ export function GoalsWidget() {
   return (
     <GlassCard variant="interactive" onClick={() => navigate('/goals')}>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-content-muted uppercase tracking-wide">Active Goals</p>
+        <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-2">Active Goals</p>
       </div>
 
       {!goals?.length ? (

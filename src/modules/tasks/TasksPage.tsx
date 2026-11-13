@@ -8,6 +8,7 @@ import { toast } from '../../stores/useToastStore';
 import type { Task } from '../../db/schema';
 import { todayStr, formatDateRelative, isOverdue } from '../../utils/dates';
 import { Plus, CheckCircle2, Trash2, Edit3, Search, X, AlertCircle } from 'lucide-react';
+import { IconButton } from '../../components/ui';
 import { format, addDays, parseISO, addMonths } from 'date-fns';
 
 type Tab = 'today' | 'upcoming' | 'overdue' | 'all' | 'completed';
@@ -241,13 +242,9 @@ function TaskRow({ task, onComplete, onUndo, onEdit, onDelete }: TaskRowProps) {
         {/* Actions */}
         <div className="flex gap-1 shrink-0">
           {task.status !== 'completed' && (
-            <button onClick={onEdit} className="p-1.5 rounded-lg glass-1 text-content-muted hover:text-content-primary transition-colors">
-              <Edit3 size={13} />
-            </button>
+            <IconButton icon={<Edit3 size={14} />} label={`Edit ${task.title}`} onClick={onEdit} />
           )}
-          <button onClick={onDelete} className="p-1.5 rounded-lg glass-1 text-content-muted hover:text-danger transition-colors">
-            <Trash2 size={13} />
-          </button>
+          <IconButton icon={<Trash2 size={14} />} label={`Delete ${task.title}`} onClick={onDelete} variant="danger" />
         </div>
       </div>
     </GlassCard>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Modal, Input, Select, Toggle } from '../../components/ui';
+import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Modal, Input, Select, Toggle, IconButton } from '../../components/ui';
 import { toast } from '../../stores/useToastStore';
 import { useSetting } from '../../hooks/useSetting';
 import { formatCurrency } from '../../utils/format';
@@ -34,23 +34,28 @@ const GlassTooltip = ({ active, payload }: any) => {
 
 export function FinancePage() {
   const [activeTab, setActiveTab] = useState<FinanceTab>('overview');
+  const [isAddOpen, setIsAddOpen] = useState(false);
+
   return (
     <div className="min-h-screen-dvh">
-      <PageHeader title="Finance" />
+      <PageHeader title="Finance" rightAction={
+        <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setIsAddOpen(true)}>Add</Button>
+      } />
       <div className="px-4 pb-4 flex flex-col gap-3">
         <Tabs
-          tabs={[
-            { id: 'overview', label: 'Overview' },
-            { id: 'transactions', label: 'Transactions' },
-            { id: 'budgets', label: 'Budgets' },
-          ]}
+          tabs={[{ id: 'overview', label: 'Overview' }, { id: 'transactions', label: 'Transactions' }, { id: 'budgets', label: 'Budgets' }]}
           activeTab={activeTab}
           onChange={id => setActiveTab(id as FinanceTab)}
         />
         {activeTab === 'overview' && <OverviewTab />}
-        {activeTab === 'transactions' && <TransactionsTab />}
+        {activeTab === 'transactions' && <TransactionsTab externalAddOpen={isAddOpen} onExternalAddClose={() => setIsAddOpen(false)} />}
         {activeTab === 'budgets' && <BudgetsTab />}
       </div>
+
+      {/* Quick-add from header — always routes to Transactions tab form */}
+      <BottomSheet open={isAddOpen && activeTab !== 'transactions'} onClose={() => setIsAddOpen(false)} title="Add Transaction" snapPoints>
+        <TransactionForm txnId={null} onClose={() => setIsAddOpen(false)} />
+      </BottomSheet>
     </div>
   );
 }
@@ -126,7 +131,7 @@ function OverviewTab() {
       {/* Pie chart */}
       {pieData.length > 0 && (
         <GlassCard>
-          <p className="text-xs font-semibold text-content-muted uppercase tracking-wide mb-3">Category Breakdown</p>
+          <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">Category Breakdown</p>
           <div className="flex items-center gap-4">
             <ResponsiveContainer width={140} height={140}>
               <RePie>
@@ -154,7 +159,7 @@ function OverviewTab() {
       {/* 6-month trend */}
       {(trendData ?? []).some(d => d.income > 0 || d.expenses > 0) && (
         <GlassCard>
-          <p className="text-xs font-semibold text-content-muted uppercase tracking-wide mb-3">6-Month Trend</p>
+          <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">6-Month Trend</p>
           <ResponsiveContainer width="100%" height={130}>
             <BarChart data={trendData ?? []}>
               <XAxis dataKey="month" tick={{ fill: '#606080', fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -169,12 +174,16 @@ function OverviewTab() {
   );
 }
 
-function TransactionsTab() {
+function TransactionsTab({ externalAddOpen, onExternalAddClose }: { externalAddOpen?: boolean; onExternalAddClose?: () => void }) {
   const [currency] = useSetting('currency', 'INR');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+
+  // Respond to external "Add" CTA from the page header
+  const isSheetOpen = isFormOpen || !!externalAddOpen;
+  const closeSheet = () => { setIsFormOpen(false); setEditingId(null); onExternalAddClose?.(); };
 
   const transactions = useLiveQuery(
     () => db.transactions.orderBy('date').reverse().limit(50).toArray(),
@@ -224,12 +233,8 @@ function TransactionsTab() {
                   {txn.type === 'income' ? '+' : '-'}{formatCurrency(txn.amount, currency)}
                 </p>
                 <div className="flex gap-1">
-                  <button onClick={() => { setEditingId(txn.id!); setIsFormOpen(true); }} className="p-1 glass-1 rounded text-content-muted hover:text-content-primary">
-                    <Edit3 size={12} />
-                  </button>
-                  <button onClick={() => setDeletingId(txn.id!)} className="p-1 glass-1 rounded text-content-muted hover:text-danger">
-                    <Trash2 size={12} />
-                  </button>
+                  <IconButton icon={<Edit3 size={12} />} label={`Edit ${txn.description || txn.category}`} onClick={() => { setEditingId(txn.id!); setIsFormOpen(true); }} />
+                  <IconButton icon={<Trash2 size={12} />} label={`Delete ${txn.description || txn.category}`} onClick={() => setDeletingId(txn.id!)} variant="danger" />
                 </div>
               </div>
             </GlassCard>
@@ -237,8 +242,13 @@ function TransactionsTab() {
         </div>
       )}
 
-      <BottomSheet open={isFormOpen} onClose={() => { setIsFormOpen(false); setEditingId(null); }} title={editingId ? 'Edit Transaction' : 'Add Transaction'} snapPoints>
-        <TransactionForm txnId={editingId} onClose={() => { setIsFormOpen(false); setEditingId(null); }} />
+      <BottomSheet
+        open={isSheetOpen}
+        onClose={closeSheet}
+        title={editingId ? 'Edit Transaction' : 'Add Transaction'}
+        snapPoints
+      >
+        <TransactionForm txnId={editingId} onClose={closeSheet} />
       </BottomSheet>
 
       <Modal open={!!deletingId} onClose={() => setDeletingId(null)} title="Delete Transaction?" size="sm">

@@ -24,7 +24,7 @@ export function HabitRingWidget() {
       <div className="flex items-center gap-4">
         <ProgressRing value={pct} size={72} strokeWidth={5} sublabel="done" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-content-muted uppercase tracking-wide mb-2">Habits Today</p>
+          <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-2">Habits Today</p>
           <div className="flex flex-col gap-1.5">
             {(habits ?? []).slice(0, 4).map(h => (
               <div key={h.id} className="flex items-center gap-2">

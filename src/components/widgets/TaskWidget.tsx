@@ -28,7 +28,7 @@ export function TaskWidget() {
   return (
     <GlassCard variant="interactive" onClick={() => navigate('/tasks')}>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-content-muted uppercase tracking-wide">Today's Tasks</p>
+        <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-2">Today's Tasks</p>
         {(todayTasks?.length ?? 0) > 0 && (
           <Badge variant="accent">{todayTasks!.length} pending</Badge>
         )}

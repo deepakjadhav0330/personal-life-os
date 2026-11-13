@@ -20,7 +20,7 @@ export function RemindersWidget() {
   return (
     <GlassCard variant="interactive" onClick={() => navigate('/calendar')}>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-xs font-semibold text-content-muted uppercase tracking-wide">Upcoming Reminders</p>
+        <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-2">Upcoming Reminders</p>
       </div>
 
       {!reminders?.length ? (

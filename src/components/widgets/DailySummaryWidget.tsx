@@ -52,7 +52,7 @@ export function DailySummaryWidget() {
 
   return (
     <GlassCard>
-      <p className="text-xs font-semibold text-content-muted uppercase tracking-wide mb-3">Today at a Glance</p>
+      <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">Today at a Glance</p>
       <div className="grid grid-cols-3 gap-3">
         {stats.map(stat => (
           <div key={stat.label} className="flex flex-col items-center gap-1 p-2 glass-1 rounded-input">

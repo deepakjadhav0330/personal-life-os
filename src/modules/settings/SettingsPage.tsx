@@ -223,7 +223,7 @@ export function SettingsPage() {
 function SettingSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <GlassCard>
-      <p className="text-xs font-semibold text-content-muted uppercase tracking-wide mb-3">{title}</p>
+      <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">{title}</p>
       <div className="flex flex-col gap-3">{children}</div>
     </GlassCard>
   );

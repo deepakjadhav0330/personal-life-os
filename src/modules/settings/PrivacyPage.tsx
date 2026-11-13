@@ -36,7 +36,7 @@ export function PrivacyPage() {
         </PrivacySection>
 
         <GlassCard>
-          <p className="text-xs font-semibold text-content-muted uppercase tracking-wide mb-3">Data stored on your device</p>
+          <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">Data stored on your device</p>
           <div className="flex flex-col gap-2">
             {[
               'Tasks and priorities', 'Habits and streaks', 'Workout sessions and exercises',

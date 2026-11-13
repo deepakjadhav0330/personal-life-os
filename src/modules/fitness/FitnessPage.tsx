@@ -122,7 +122,7 @@ function BodyTab() {
       {/* Weight chart */}
       {chartData.length > 1 && (
         <GlassCard>
-          <p className="text-xs font-semibold text-content-muted uppercase tracking-wide mb-3">Weight Trend</p>
+          <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">Weight Trend</p>
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={chartData}>
               <XAxis dataKey="date" tick={{ fill: '#606080', fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -136,7 +136,7 @@ function BodyTab() {
 
       {/* History */}
       <GlassCard>
-        <p className="text-xs font-semibold text-content-muted uppercase tracking-wide mb-3">Recent Measurements</p>
+        <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">Recent Measurements</p>
         {!measurements?.length ? (
           <p className="text-sm text-content-muted text-center py-4">No measurements yet</p>
         ) : (
@@ -459,7 +459,7 @@ function AnalyticsTab() {
 
       {weightChartData.length > 1 && (
         <GlassCard>
-          <p className="text-xs font-semibold text-content-muted uppercase tracking-wide mb-3">Weight Trend (30 days)</p>
+          <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">Weight Trend (30 days)</p>
           <ResponsiveContainer width="100%" height={140}>
             <LineChart data={weightChartData}>
               <XAxis dataKey="date" tick={{ fill: '#606080', fontSize: 9 }} axisLine={false} tickLine={false} />
@@ -472,7 +472,7 @@ function AnalyticsTab() {
 
       {workoutFreqData.some(d => d.count > 0) && (
         <GlassCard>
-          <p className="text-xs font-semibold text-content-muted uppercase tracking-wide mb-3">Workout Frequency</p>
+          <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">Workout Frequency</p>
           <ResponsiveContainer width="100%" height={120}>
             <BarChart data={workoutFreqData}>
               <XAxis dataKey="week" tick={{ fill: '#606080', fontSize: 9 }} axisLine={false} tickLine={false} />
@@ -485,7 +485,7 @@ function AnalyticsTab() {
 
       {calData.length > 1 && (
         <GlassCard>
-          <p className="text-xs font-semibold text-content-muted uppercase tracking-wide mb-3">Calorie Consistency</p>
+          <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">Calorie Consistency</p>
           <ResponsiveContainer width="100%" height={120}>
             <BarChart data={calData}>
               <XAxis dataKey="date" tick={{ fill: '#606080', fontSize: 9 }} axisLine={false} tickLine={false} />

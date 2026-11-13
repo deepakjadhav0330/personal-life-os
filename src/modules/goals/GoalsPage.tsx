@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Badge, ProgressBar, Input, Select, Textarea, Modal } from '../../components/ui';
+import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Badge, ProgressBar, Input, Select, Textarea, Modal, IconButton } from '../../components/ui';
 import { toast } from '../../stores/useToastStore';
 import { formatDate, isOverdue } from '../../utils/dates';
 import type { Goal, GoalCategory, Milestone } from '../../db/schema';
@@ -120,8 +120,8 @@ export function GoalsPage() {
                       <p className="text-xs text-content-muted mt-1">{milestones.filter(m => m.status === 'completed').length}/{milestones.length} milestones</p>
                     </div>
                     <div className="flex flex-col gap-1">
-                      <button onClick={e => { e.stopPropagation(); setEditingId(goal.id!); setIsFormOpen(true); }} className="p-1.5 glass-1 rounded text-content-muted hover:text-content-primary"><Edit3 size={12} /></button>
-                      <button onClick={e => { e.stopPropagation(); setDeletingId(goal.id!); }} className="p-1.5 glass-1 rounded text-content-muted hover:text-danger"><Trash2 size={12} /></button>
+                      <IconButton icon={<Edit3 size={12} />} label={`Edit ${goal.title}`} onClick={e => { e.stopPropagation(); setEditingId(goal.id!); setIsFormOpen(true); }} />
+                      <IconButton icon={<Trash2 size={12} />} label={`Delete ${goal.title}`} onClick={e => { e.stopPropagation(); setDeletingId(goal.id!); }} variant="danger" />
                     </div>
                   </div>
                 </GlassCard>
@@ -227,14 +227,17 @@ function GoalForm({ goalId, onClose }: { goalId: number | null; onClose: () => v
         <div>
           <label className="text-xs font-medium text-content-secondary uppercase tracking-wide mb-2 block">Milestones (optional)</label>
           {milestones.map((m, i) => (
-            <input key={i} className="w-full h-10 rounded-input glass-input text-content-primary placeholder:text-content-muted px-3 text-sm mb-2"
-              placeholder={`Milestone ${i + 1}`} value={m.title} onChange={e => { const ms = [...milestones]; ms[i].title = e.target.value; setMilestones(ms); }} />
+            <Input key={i} placeholder={`Milestone ${i + 1}`} value={m.title}
+              onChange={e => { const ms = [...milestones]; ms[i].title = e.target.value; setMilestones(ms); }} />
           ))}
           <Button variant="ghost" size="sm" onClick={() => setMilestones([...milestones, { title: '' }])}>+ Add Milestone</Button>
         </div>
       )}
 
-      <Button variant="primary" onClick={save} loading={loading}>{goalId ? 'Update Goal' : 'Create Goal'}</Button>
+      <div className="flex gap-3">
+        <Button variant="ghost" fullWidth onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={save} loading={loading}>{goalId ? 'Update Goal' : 'Create Goal'}</Button>
+      </div>
     </div>
   );
 }
@@ -300,13 +303,12 @@ function GoalDetail({ goal, milestones, onClose }: { goal: Goal; milestones: Mil
         ))}
       </div>
 
-      <div className="flex gap-2">
-        <input
-          className="flex-1 h-10 rounded-input glass-input text-content-primary placeholder:text-content-muted px-3 text-sm"
-          placeholder="Add milestone…"
+      <div className="flex gap-2 mt-2">
+        <Input
           value={newMilestone}
           onChange={e => setNewMilestone(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && addMilestone()}
+          placeholder="Add milestone…"
+          onKeyDown={(e: React.KeyboardEvent) => e.key === 'Enter' && addMilestone()}
         />
         <Button variant="primary" size="sm" onClick={addMilestone} disabled={!newMilestone.trim()}>Add</Button>
       </div>

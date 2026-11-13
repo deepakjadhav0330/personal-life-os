@@ -21,9 +21,11 @@ const categoryOptions = [
 ];
 
 const recurringOptions = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
+  { value: 'daily',    label: 'Every day' },
+  { value: 'weekdays', label: 'Weekdays only  (Mon – Fri)' },
+  { value: 'weekends', label: 'Weekends only  (Sat – Sun)' },
+  { value: 'weekly',   label: 'Weekly' },
+  { value: 'monthly',  label: 'Monthly' },
 ];
 
 export function TaskForm({ taskId, onClose, defaultDueDate }: TaskFormProps) {

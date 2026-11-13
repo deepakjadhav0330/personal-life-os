@@ -15,7 +15,7 @@ export interface Setting {
 export type TaskPriority = 'high' | 'medium' | 'low';
 export type TaskCategory = 'personal' | 'work' | 'fitness' | 'learning' | 'finance' | 'other';
 export type TaskStatus = 'pending' | 'completed';
-export type RecurringFrequency = 'daily' | 'weekly' | 'monthly';
+export type RecurringFrequency = 'daily' | 'weekdays' | 'weekends' | 'weekly' | 'monthly';
 
 export interface Task {
   id?: number;

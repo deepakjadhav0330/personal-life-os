@@ -18,10 +18,10 @@ const paddingClasses = {
 };
 
 const variantClasses = {
-  default: 'glass-1',
-  elevated: 'glass-elevated',
-  interactive: 'glass-1 cursor-pointer active:scale-[0.98] hover:border-white/15 transition-all duration-200',
-  accent: 'glass-1 border-accent/30 border-t-accent/50',
+  default:     'glass-1',
+  elevated:    'glass-elevated',
+  interactive: 'glass-1 cursor-pointer active:scale-[0.985] hover:glass-2 transition-all duration-200',
+  accent:      'glass-1 !border-accent/35 !border-t-accent/55 shadow-[0_4px_20px_rgba(124,58,237,0.18)]',
 };
 
 export function GlassCard({
@@ -36,13 +36,24 @@ export function GlassCard({
     <Tag
       onClick={onClick}
       className={cn(
-        'rounded-card shadow-glass',
+        'relative rounded-card overflow-hidden',
         variantClasses[variant],
         paddingClasses[padding],
         className,
       )}
     >
-      {children}
+      {/* Subtle directional-light overlay — simulates glass catching light
+          from the top-left, fades toward bottom-right.               */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-card"
+        style={{
+          background: 'linear-gradient(145deg, rgba(255,255,255,0.045) 0%, transparent 55%)',
+        }}
+      />
+      {/* Content sits above the overlay */}
+      <div className={cn('relative', padding === 'none' ? '' : 'z-10')}>
+        {children}
+      </div>
     </Tag>
   );
 }

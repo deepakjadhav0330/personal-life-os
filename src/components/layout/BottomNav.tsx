@@ -53,16 +53,28 @@ export function BottomNav() {
                 to={tab.path}
                 end={tab.exact}
                 className={({ isActive }) => cn(
-                  'flex flex-col items-center gap-1 px-4 py-1.5 rounded-pill transition-all duration-200 min-h-touch',
+                  'relative flex flex-col items-center gap-0.5 px-4 py-2 rounded-pill transition-all duration-200 min-h-touch',
                   isActive ? 'text-accent' : 'text-content-muted',
                 )}
               >
                 {({ isActive }) => (
                   <>
-                    <span className={cn('transition-transform duration-200', isActive && 'scale-110')}>
+                    <span className={cn(
+                      'transition-all duration-200',
+                      isActive && 'scale-110',
+                      isActive && '[filter:drop-shadow(0_0_7px_rgba(124,58,237,0.75))]',
+                    )}>
                       <tab.icon size={20} />
                     </span>
-                    <span className={cn('text-[10px] font-medium transition-colors', isActive && 'font-semibold')}>{tab.label}</span>
+                    <span className={cn('text-[10px] font-medium transition-colors', isActive && 'font-semibold')}>
+                      {tab.label}
+                    </span>
+                    {isActive && (
+                      <span
+                        className="absolute bottom-1 w-1 h-1 rounded-full bg-accent"
+                        style={{ boxShadow: '0 0 6px rgba(124,58,237,0.9), 0 0 12px rgba(124,58,237,0.5)' }}
+                      />
+                    )}
                   </>
                 )}
               </NavLink>

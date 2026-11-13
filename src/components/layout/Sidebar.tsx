@@ -1,24 +1,28 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, Flame, Dumbbell,
-  DollarSign, BookOpen, Target, CalendarDays, Settings, GraduationCap, Zap } from 'lucide-react';
+import {
+  LayoutDashboard, CheckSquare, Dumbbell, DollarSign,
+  Flame, BookOpen, Target, CalendarDays, Settings, GraduationCap, Zap,
+} from 'lucide-react';
 import { cn } from '../../utils/cn';
 
+// Mirrors the mobile nav logic:
+// Primary = tabs on the bottom bar  |  More = everything else
 const navGroups = [
   {
-    label: 'Main',
+    label: 'Primary',
     items: [
-      { path: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-      { path: '/tasks', label: 'Tasks', icon: CheckSquare },
-      { path: '/habits', label: 'Habits', icon: Flame },
-      { path: '/fitness', label: 'Fitness', icon: Dumbbell },
+      { path: '/',        label: 'Dashboard', icon: LayoutDashboard, exact: true },
+      { path: '/tasks',   label: 'Tasks',     icon: CheckSquare },
+      { path: '/fitness', label: 'Fitness',   icon: Dumbbell },
+      { path: '/finance', label: 'Finance',   icon: DollarSign },
     ],
   },
   {
-    label: 'Personal',
+    label: 'More',
     items: [
-      { path: '/finance', label: 'Finance', icon: DollarSign },
-      { path: '/journal', label: 'Journal', icon: BookOpen },
-      { path: '/goals', label: 'Goals', icon: Target },
+      { path: '/habits',   label: 'Habits',   icon: Flame },
+      { path: '/journal',  label: 'Journal',  icon: BookOpen },
+      { path: '/goals',    label: 'Goals',    icon: Target },
       { path: '/learning', label: 'Learning', icon: GraduationCap },
       { path: '/calendar', label: 'Calendar', icon: CalendarDays },
     ],

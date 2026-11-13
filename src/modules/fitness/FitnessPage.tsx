@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
@@ -261,12 +261,25 @@ function NutritionTab() {
   const [carbs, setCarbs] = useState('');
   const [fat, setFat] = useState('');
   const [meal, setMeal] = useState<'breakfast' | 'lunch' | 'dinner' | 'snacks'>('breakfast');
+  const [caloriesManuallyEdited, setCaloriesManuallyEdited] = useState(false);
 
   const [calorieTarget] = useSetting('calorieTarget', 2200);
   const [proteinTarget] = useSetting('proteinTarget', 150);
   const [carbTarget] = useSetting('carbTarget', 220);
   const [fatTarget] = useSetting('fatTarget', 70);
   const [waterTarget] = useSetting('waterTarget', 2500);
+
+  // Auto-calculate calories from macros (protein × 4 + carbs × 4 + fat × 9)
+  // Only auto-fills when macros are entered and user hasn't manually overridden calories
+  useEffect(() => {
+    if (caloriesManuallyEdited) return;
+    const p = parseFloat(protein) || 0;
+    const c = parseFloat(carbs) || 0;
+    const f = parseFloat(fat) || 0;
+    if (p > 0 || c > 0 || f > 0) {
+      setCalories(String(Math.round(p * 4 + c * 4 + f * 9)));
+    }
+  }, [protein, carbs, fat, caloriesManuallyEdited]);
 
   const log = useLiveQuery(() => db.nutritionLogs.where('date').equals(date).first(), [date]);
 
@@ -316,6 +329,7 @@ function NutritionTab() {
     }
     toast.success('Food logged!');
     setFoodName(''); setCalories(''); setProtein(''); setCarbs(''); setFat('');
+    setCaloriesManuallyEdited(false);
     setIsAddingFood(false);
   };
 
@@ -387,7 +401,9 @@ function NutritionTab() {
           ]} />
           <Input label="Food Name *" value={foodName} onChange={e => setFoodName(e.target.value)} placeholder="e.g. Chicken breast 100g" autoFocus />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Calories *" type="number" inputMode="decimal" value={calories} onChange={e => setCalories(e.target.value)} placeholder="0" />
+            <Input label="Calories *" type="number" inputMode="decimal" value={calories}
+            onChange={e => { setCaloriesManuallyEdited(true); setCalories(e.target.value); }}
+            placeholder="Auto-calculated from macros" />
             <Input label="Protein (g)" type="number" inputMode="decimal" value={protein} onChange={e => setProtein(e.target.value)} placeholder="0" />
             <Input label="Carbs (g)" type="number" inputMode="decimal" value={carbs} onChange={e => setCarbs(e.target.value)} placeholder="0" />
             <Input label="Fat (g)" type="number" inputMode="decimal" value={fat} onChange={e => setFat(e.target.value)} placeholder="0" />

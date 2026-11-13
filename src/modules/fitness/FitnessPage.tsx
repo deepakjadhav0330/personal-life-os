@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useLocation } from 'react-router-dom';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard, Button, Tabs, EmptyState, BottomSheet, ProgressBar } from '../../components/ui';
@@ -32,6 +33,13 @@ const GlassTooltip = ({ active, payload, label }: any) => {
 
 export function FitnessPage() {
   const [activeTab, setActiveTab] = useState<FitnessTab>('body');
+  const location = useLocation();
+
+  useEffect(() => {
+    const tab = location.state?.autoTab as FitnessTab | undefined;
+    if (tab) { setActiveTab(tab); window.history.replaceState({}, ''); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const tabs = [
     { id: 'body', label: 'Body', icon: <Scale size={12} /> },

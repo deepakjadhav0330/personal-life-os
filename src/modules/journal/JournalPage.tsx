@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useLocation } from 'react-router-dom';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Textarea, Input, Modal } from '../../components/ui';
@@ -18,10 +19,19 @@ const MOODS: { key: JournalMood; emoji: string; label: string }[] = [
 
 export function JournalPage() {
   const [activeTab, setActiveTab] = useState<'entries' | 'reflect'>('entries');
+  const location = useLocation();
+  const [autoOpen] = useState(!!location.state?.autoOpen);
+
+  useEffect(() => {
+    if (location.state?.autoOpen) window.history.replaceState({}, '');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="min-h-screen-dvh">
       <PageHeader title="Journal" />
-      <div className="px-4 pb-4 flex flex-col gap-3">        <Tabs
+      <div className="px-4 pb-4 flex flex-col gap-3">
+        <Tabs
           tabs={[
             { id: 'entries', label: 'Journal', icon: <BookOpen size={12} /> },
             { id: 'reflect', label: 'Reflect', icon: <Lightbulb size={12} /> },
@@ -29,15 +39,15 @@ export function JournalPage() {
           activeTab={activeTab}
           onChange={id => setActiveTab(id as any)}
         />
-        {activeTab === 'entries' && <JournalEntries />}
+        {activeTab === 'entries' && <JournalEntries autoOpen={autoOpen} />}
         {activeTab === 'reflect' && <ThoughtAnalysis />}
       </div>
     </div>
   );
 }
 
-function JournalEntries() {
-  const [isEditing, setIsEditing] = useState(false);
+function JournalEntries({ autoOpen = false }: { autoOpen?: boolean }) {
+  const [isEditing, setIsEditing] = useState(autoOpen);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDate, setEditDate] = useState(todayStr());
   const [mood, setMood] = useState<JournalMood | null>(null);

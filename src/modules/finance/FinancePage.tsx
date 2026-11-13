@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useLocation } from 'react-router-dom';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Modal, Input, Select, Toggle, IconButton } from '../../components/ui';
@@ -35,6 +36,20 @@ const GlassTooltip = ({ active, payload }: any) => {
 export function FinancePage() {
   const [activeTab, setActiveTab] = useState<FinanceTab>('overview');
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [addType, setAddType] = useState<'expense' | 'income'>('expense');
+  const location = useLocation();
+
+  // Auto-open from iOS Shortcuts ?action=expense / ?action=income
+  useEffect(() => {
+    const a = location.state?.autoOpen;
+    if (a === 'expense' || a === 'income') {
+      setAddType(a);
+      setIsAddOpen(true);
+      setActiveTab('transactions');
+      window.history.replaceState({}, '');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen-dvh">
@@ -52,9 +67,9 @@ export function FinancePage() {
         {activeTab === 'budgets' && <BudgetsTab />}
       </div>
 
-      {/* Quick-add from header — always routes to Transactions tab form */}
+      {/* Quick-add from header or Shortcut — always routes to Transactions tab form */}
       <BottomSheet open={isAddOpen && activeTab !== 'transactions'} onClose={() => setIsAddOpen(false)} title="Add Transaction" snapPoints>
-        <TransactionForm txnId={null} onClose={() => setIsAddOpen(false)} />
+        <TransactionForm txnId={null} initialType={addType} onClose={() => setIsAddOpen(false)} />
       </BottomSheet>
     </div>
   );
@@ -262,8 +277,8 @@ function TransactionsTab({ externalAddOpen, onExternalAddClose }: { externalAddO
   );
 }
 
-function TransactionForm({ txnId, onClose }: { txnId: number | null; onClose: () => void }) {
-  const [type, setType] = useState<'income' | 'expense'>('expense');
+function TransactionForm({ txnId, onClose, initialType }: { txnId: number | null; onClose: () => void; initialType?: 'expense' | 'income' }) {
+  const [type, setType] = useState<'income' | 'expense'>(initialType ?? 'expense');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(todayStr());
   const [category, setCategory] = useState('food');

@@ -1,5 +1,6 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useEffect } from 'react';
 import { useSetting } from '../../hooks/useSetting';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard } from '../../components/ui';
@@ -40,6 +41,15 @@ const defaultConfig: DashboardWidgetConfig[] = [
 
 export function DashboardPage() {
   const [dashConfig] = useSetting<DashboardWidgetConfig[]>('dashboardConfig', defaultConfig);
+  const location = useLocation();
+  const quickAddText: string | undefined = location.state?.quickAdd;
+
+  // Clear the state so it doesn't persist on subsequent renders
+  useEffect(() => {
+    if (quickAddText) {
+      window.history.replaceState({}, '');
+    }
+  }, [quickAddText]);
 
   // Check whether the user has any real data yet
   const hasData = useLiveQuery(async () => {
@@ -56,21 +66,21 @@ export function DashboardPage() {
     <div className="min-h-screen-dvh">
       <PageHeader title="Life OS" showNotifications large />
       <div className="px-4 pb-4 flex flex-col gap-3">
-        {/* Quick-add bar — always visible at the top of the dashboard */}
-        <QuickAddBar />
-
-        {/* Show only greeting + welcome card until user has some data */}
         {hasData === false ? (
           <>
+            <QuickAddBar initialValue={quickAddText} />
             <GreetingWidget />
             <WelcomeCard />
           </>
         ) : (
-          visibleWidgets.map(widget => {
-            const Widget = widgetMap[widget.widgetId];
-            if (!Widget) return null;
-            return <Widget key={widget.widgetId} />;
-          })
+          <>
+            <QuickAddBar initialValue={quickAddText} />
+            {visibleWidgets.map(widget => {
+              const Widget = widgetMap[widget.widgetId];
+              if (!Widget) return null;
+              return <Widget key={widget.widgetId} />;
+            })}
+          </>
         )}
       </div>
     </div>

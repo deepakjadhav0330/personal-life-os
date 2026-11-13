@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useLocation } from 'react-router-dom';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard, Button, Tabs, Badge, EmptyState, BottomSheet, Modal } from '../../components/ui';
@@ -35,6 +36,17 @@ export function TasksPage() {
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const today = todayStr();
+  const location = useLocation();
+
+  // Auto-open from iOS Shortcuts ?action=task deep link
+  useEffect(() => {
+    if (location.state?.autoOpen) {
+      setIsFormOpen(true);
+      // Clear state so back-nav doesn't re-open the form
+      window.history.replaceState({}, '');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const allTasks = useLiveQuery(() => db.tasks.orderBy('createdAt').reverse().toArray(), [], []);
 

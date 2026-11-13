@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useSetting } from '../../hooks/useSetting';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard } from '../../components/ui';
+import { QuickAddBar } from '../../components/dashboard/QuickAddBar';
 import { GreetingWidget } from '../../components/widgets/GreetingWidget';
 import { DailySummaryWidget } from '../../components/widgets/DailySummaryWidget';
 import { TaskWidget } from '../../components/widgets/TaskWidget';
@@ -55,7 +56,10 @@ export function DashboardPage() {
     <div className="min-h-screen-dvh">
       <PageHeader title="Life OS" showNotifications large />
       <div className="px-4 pb-4 flex flex-col gap-3">
-        {/* Show only the greeting + welcome card until user has some data */}
+        {/* Quick-add bar — always visible at the top of the dashboard */}
+        <QuickAddBar />
+
+        {/* Show only greeting + welcome card until user has some data */}
         {hasData === false ? (
           <>
             <GreetingWidget />

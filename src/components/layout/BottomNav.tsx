@@ -121,7 +121,7 @@ function MoreDrawer({
   const today = todayStr();
 
   // Live stats per module card
-  const habitsTotal  = useLiveQuery(() => db.habits.where({ isActive: 1 as any }).count(), [], 0);
+  const habitsTotal  = useLiveQuery(() => db.habits.filter(h => !!h.isActive).count(), [], 0);
   const habitsDone   = useLiveQuery(() => db.habitCompletions.where({ date: today }).count(), [today], 0);
   const activeGoals  = useLiveQuery(() => db.goals.where('status').equals('active').count(), [], 0);
   const learningMins = useLiveQuery(async () => {

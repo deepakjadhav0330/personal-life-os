@@ -11,6 +11,20 @@ import { Plus, CheckCircle2, Trash2, Edit3, Search, X, AlertCircle } from 'lucid
 import { IconButton } from '../../components/ui';
 import { format, addDays, parseISO, addMonths } from 'date-fns';
 
+/** Next weekday (Mon–Fri) on or after the day after fromDate */
+function nextWeekdayAfter(d: Date): string {
+  let next = addDays(d, 1);
+  while ([0, 6].includes(next.getDay())) next = addDays(next, 1); // skip Sat/Sun
+  return format(next, 'yyyy-MM-dd');
+}
+
+/** Next weekend day (Sat or Sun) on or after the day after fromDate */
+function nextWeekendAfter(d: Date): string {
+  let next = addDays(d, 1);
+  while (![0, 6].includes(next.getDay())) next = addDays(next, 1); // skip Mon–Fri
+  return format(next, 'yyyy-MM-dd');
+}
+
 type Tab = 'today' | 'upcoming' | 'overdue' | 'all' | 'completed';
 
 export function TasksPage() {
@@ -59,11 +73,13 @@ export function TasksPage() {
       const now = new Date().toISOString();
       await db.tasks.update(task.id!, { status: 'completed', completedAt: now, updatedAt: now });
       if (task.isRecurring && task.recurringFrequency && task.dueDate) {
-        const nextDate = task.recurringFrequency === 'daily'
-          ? format(addDays(parseISO(task.dueDate), 1), 'yyyy-MM-dd')
-          : task.recurringFrequency === 'weekly'
-            ? format(addDays(parseISO(task.dueDate), 7), 'yyyy-MM-dd')
-            : format(addMonths(parseISO(task.dueDate), 1), 'yyyy-MM-dd');
+        const base = parseISO(task.dueDate);
+        const nextDate =
+          task.recurringFrequency === 'daily'    ? format(addDays(base, 1), 'yyyy-MM-dd') :
+          task.recurringFrequency === 'weekdays' ? nextWeekdayAfter(base) :
+          task.recurringFrequency === 'weekends' ? nextWeekendAfter(base) :
+          task.recurringFrequency === 'weekly'   ? format(addDays(base, 7), 'yyyy-MM-dd') :
+                                                   format(addMonths(base, 1), 'yyyy-MM-dd');
         await db.tasks.add({
           ...task, id: undefined, status: 'pending', completedAt: undefined,
           dueDate: nextDate, recurringParentId: task.id,

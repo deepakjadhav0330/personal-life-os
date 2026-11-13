@@ -20,7 +20,7 @@ export function HabitsPage() {
   const today = todayStr();
 
   const habits = useLiveQuery(
-    () => db.habits.where({ isActive: 1 as any }).sortBy('order'),
+    () => db.habits.filter(h => !!h.isActive).sortBy('order'),
     [], [],
   );
 
@@ -54,7 +54,7 @@ export function HabitsPage() {
 
   async function archiveHabit() {
     if (!deletingId) return;
-    await db.habits.update(deletingId, { isActive: false as any });
+    await db.habits.update(deletingId, { isActive: 0 as any });
     setDeletingId(null);
     toast.success('Habit archived');
   }

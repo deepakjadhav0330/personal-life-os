@@ -135,6 +135,9 @@ const TASK_VERBS = [
   'pay', 'remind', 'follow', 'reply', 'draft', 'research', 'study',
   'practice', 'clean', 'organise', 'organize', 'cancel', 'confirm',
   'apply', 'register', 'renew', 'return', 'collect', 'order', 'track',
+  // Fitness & daily life
+  'workout', 'run', 'exercise', 'meditate', 'stretch', 'walk', 'jog', 'swim',
+  'cook', 'grocery', 'shop', 'journal', 'measure', 'weigh',
 ];
 
 const TASK_NOUNS = ['task', 'todo', 'to-do', 'reminder'];
@@ -218,17 +221,30 @@ function extractPriority(lower: string): 'high' | 'medium' | 'low' {
 function matchHabit(input: string, habitNames: string[]): string | undefined {
   if (!habitNames.length) return undefined;
   const lower = input.toLowerCase();
-  // Remove trigger words to isolate the habit name
   let cleaned = HABIT_DONE.reduce((s, kw) => s.replace(new RegExp(`\\b${kw}\\b`, 'gi'), ''), lower).trim();
 
   if (!cleaned) return undefined;
 
-  // Exact or partial match
-  return (
-    habitNames.find(n => n.toLowerCase() === cleaned) ??
-    habitNames.find(n => n.toLowerCase().includes(cleaned)) ??
-    habitNames.find(n => cleaned.includes(n.toLowerCase()))
-  );
+  // 1. Exact name match
+  const exact = habitNames.find(n => n.toLowerCase() === cleaned);
+  if (exact) return exact;
+
+  // 2. Habit name contains the query ("gym" in "Morning Gym")
+  const partial = habitNames.find(n => n.toLowerCase().includes(cleaned));
+  if (partial) return partial;
+
+  // 3. Query contains the habit name
+  const reverse = habitNames.find(n => cleaned.includes(n.toLowerCase()));
+  if (reverse) return reverse;
+
+  // 4. Word-level fuzzy — any word in query prefix-matches any word in habit name
+  const queryWords = cleaned.split(/\s+/);
+  return habitNames.find(name => {
+    const habitWords = name.toLowerCase().split(/\s+/);
+    return queryWords.some(qw =>
+      habitWords.some(hw => hw.startsWith(qw) || qw.startsWith(hw)),
+    );
+  });
 }
 
 function buildTaskTitle(tokens: string[], excludeLower: Set<string>): string {
@@ -287,6 +303,19 @@ export function parseQuickAdd(
         emoji: '✅',
         color: '#22c55e',
         data: { habitName: habit },
+      };
+    }
+    // No habit matched — fall through to create a task instead
+    // e.g. "done gym" with no gym habit → task "gym"
+    const taskTitle = tokens.slice(1).join(' ').trim();
+    if (taskTitle) {
+      return {
+        type: 'task',
+        confidence: 'medium',
+        preview: `Add task: "${taskTitle}"`,
+        emoji: '☑',
+        color: '#6366f1',
+        data: { title: taskTitle, priority: 'medium', taskCategory: 'personal' },
       };
     }
   }

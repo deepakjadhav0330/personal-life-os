@@ -16,7 +16,7 @@ export function DailySummaryWidget() {
     [today], 0,
   );
 
-  const habitsTotal = useLiveQuery(() => db.habits.where({ isActive: 1 as any }).count(), [], 0);
+  const habitsTotal = useLiveQuery(() => db.habits.filter(h => !!h.isActive).count(), [], 0);
   const habitsDone = useLiveQuery(
     () => db.habitCompletions.where({ date: today }).count(),
     [today], 0,

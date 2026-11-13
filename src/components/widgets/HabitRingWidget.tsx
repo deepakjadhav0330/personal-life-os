@@ -10,7 +10,7 @@ export function HabitRingWidget() {
   const navigate = useNavigate();
   const today = todayStr();
 
-  const habits = useLiveQuery(() => db.habits.where({ isActive: 1 as any }).sortBy('order'), [], []);
+  const habits = useLiveQuery(() => db.habits.filter(h => !!h.isActive).sortBy('order'), [], []);
   const completions = useLiveQuery(
     () => db.habitCompletions.where({ date: today }).toArray(),
     [today], [],

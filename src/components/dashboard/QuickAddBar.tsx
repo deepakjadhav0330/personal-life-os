@@ -30,7 +30,7 @@ export function QuickAddBar() {
 
   // Active habit names for habit-completion parsing
   const habitNames = useLiveQuery(
-    () => db.habits.where({ isActive: 1 as any }).toArray().then(h => h.map(x => x.name)),
+    () => db.habits.filter(h => !!h.isActive).toArray().then(h => h.map(x => x.name)),
     [],
     [],
   ) ?? [];

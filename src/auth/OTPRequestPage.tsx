@@ -58,8 +58,13 @@ export function OTPRequestPage() {
         return;
       }
       if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        setApiError(body.error ?? 'Something went wrong. Please try again.');
+        const text = await res.text().catch(() => '');
+        let msg = 'Something went wrong. Please try again.';
+        try {
+          const body = JSON.parse(text) as { error?: string; message?: string };
+          msg = body.error ?? body.message ?? (text.length < 300 ? text : msg);
+        } catch { if (text && text.length < 300) msg = text; }
+        setApiError(msg);
         return;
       }
 

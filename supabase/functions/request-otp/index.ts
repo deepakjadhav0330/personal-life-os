@@ -1,4 +1,3 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.47.10';
 import { handleCors, json, error } from '../_shared/cors.ts';
 import { getServiceClient } from '../_shared/supabase.ts';
 
@@ -21,7 +20,7 @@ Deno.serve(async (req) => {
   const isAdmin     = !!adminEmail && normalizedEmail === adminEmail;
 
   if (isAdmin) {
-    // Admin path — ensure user + profile exist with admin role
+    // Admin path — ensure the admin user and profile exist
     const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 });
     const existing = users.find(u => u.email === normalizedEmail);
 
@@ -35,7 +34,7 @@ Deno.serve(async (req) => {
       });
       if (createErr) {
         console.error('[request-otp] admin create error:', createErr);
-        return error('Could not create admin account', 500);
+        return error(`Could not create admin account: ${createErr.message}`, 500);
       }
       if (created?.user) {
         await supabase.from('profiles').upsert({
@@ -48,13 +47,12 @@ Deno.serve(async (req) => {
         }, { onConflict: 'id' });
       }
     } else {
-      // Ensure admin role is set
+      // Ensure admin role and profile are set
       if (existing.app_metadata?.role !== 'admin') {
         await supabase.auth.admin.updateUserById(existing.id, {
           app_metadata: { role: 'admin' },
         });
       }
-      // Ensure profile exists
       await supabase.from('profiles').upsert({
         id: existing.id,
         full_name: existing.user_metadata?.full_name ?? 'Administrator',
@@ -77,20 +75,15 @@ Deno.serve(async (req) => {
     if (profile.status === 'pending')   return error('Account is not yet approved', 403);
   }
 
-  // Send the 6-digit OTP via anon client
-  const anonClient = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-  );
-
-  const { error: otpError } = await anonClient.auth.signInWithOtp({
+  // Send magic link via service role (reliable, uses project Site URL for redirect)
+  const { error: linkError } = await supabase.auth.admin.generateLink({
+    type: 'magiclink',
     email: normalizedEmail,
-    options: { shouldCreateUser: true }, // safe — non-approved users can't access the app anyway
   });
 
-  if (otpError) {
-    console.error('[request-otp] OTP error:', otpError);
-    return error(`Failed to send sign-in code: ${otpError.message}`, 500);
+  if (linkError) {
+    console.error('[request-otp] generateLink error:', linkError);
+    return error(`Failed to send sign-in link: ${linkError.message}`, 500);
   }
 
   return json({ success: true });

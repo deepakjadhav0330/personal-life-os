@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Mail, AlertCircle } from 'lucide-react';
+import { Mail, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { GlassCard, Button, Input } from '../components/ui';
 import { AppLogo } from '../components/ui/AppLogo';
 import { supabase } from '../lib/supabase';
@@ -8,13 +8,10 @@ import { supabase } from '../lib/supabase';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function getPrefilledEmail(): string {
-  // Priority: navigation state → pending registration localStorage
   try {
-    const reg = JSON.parse(localStorage.getItem('lifeOS_pending_registration') ?? 'null') as { email: string } | null;
+    const reg = JSON.parse(localStorage.getItem('lifeOS_pending_registration') ?? 'null') as { email?: string } | null;
     return reg?.email ?? '';
-  } catch {
-    return '';
-  }
+  } catch { return ''; }
 }
 
 export function OTPRequestPage() {
@@ -26,6 +23,7 @@ export function OTPRequestPage() {
   const [emailErr, setEmailErr] = useState('');
   const [apiError, setApiError] = useState('');
   const [loading, setLoading]   = useState(false);
+  const [sent, setSent]         = useState(false);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -44,7 +42,7 @@ export function OTPRequestPage() {
       });
 
       if (fnError) {
-        const msg = (fnError as { message?: string; context?: { json?: () => Promise<{ error?: string }> } }).message ?? '';
+        const msg = (fnError as { message?: string }).message ?? '';
         if (msg.includes('403') || msg.toLowerCase().includes('not yet approved')) {
           setApiError('Your account has not been approved yet. Please wait for the administrator to review your request.');
         } else if (msg.includes('423') || msg.toLowerCase().includes('suspended')) {
@@ -57,9 +55,8 @@ export function OTPRequestPage() {
         return;
       }
 
-      // Store email for the OTP verification step
-      sessionStorage.setItem('lifeOS_otp_email', email.trim().toLowerCase());
-      navigate('/verify-otp', { replace: true });
+      // Success — show "check your email" state
+      setSent(true);
     } catch {
       setApiError('Unable to connect — check your internet connection.');
     } finally {
@@ -67,6 +64,45 @@ export function OTPRequestPage() {
     }
   }
 
+  // ── "Check your email" screen ───────────────────────────────
+  if (sent) {
+    return (
+      <div className="min-h-screen-dvh flex flex-col items-center justify-center px-4 py-8">
+        <div className="w-full max-w-sm flex flex-col gap-6">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <AppLogo size={64} />
+            <div className="w-14 h-14 rounded-full bg-success/15 border border-success/30 flex items-center justify-center mt-2">
+              <CheckCircle2 size={26} className="text-success" />
+            </div>
+          </div>
+
+          <GlassCard className="border-success/20 text-center">
+            <p className="text-base font-semibold text-content-primary mb-2">Check your email</p>
+            <p className="text-sm text-content-secondary leading-relaxed">
+              A sign-in link has been sent to
+            </p>
+            <p className="text-sm font-medium text-content-primary my-1">{email}</p>
+            <p className="text-sm text-content-secondary leading-relaxed">
+              Click the link in the email to sign in. You can close this screen.
+            </p>
+          </GlassCard>
+
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSent(false)}
+              className="self-center"
+            >
+              Resend or use a different email
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Email entry screen ──────────────────────────────────────
   return (
     <div className="min-h-screen-dvh flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm flex flex-col gap-6">
@@ -77,7 +113,7 @@ export function OTPRequestPage() {
           <div>
             <h1 className="text-2xl font-bold text-content-primary">Sign In</h1>
             <p className="text-sm text-content-muted mt-1">
-              Enter your email to receive a sign-in code
+              Enter your email and we'll send you a sign-in link
             </p>
           </div>
         </div>
@@ -108,7 +144,7 @@ export function OTPRequestPage() {
             )}
 
             <Button type="submit" variant="primary" fullWidth loading={loading}>
-              Send Sign-In Code
+              Send Sign-In Link
             </Button>
           </form>
         </GlassCard>
@@ -119,9 +155,10 @@ export function OTPRequestPage() {
             localStorage.removeItem('lifeOS_pending_registration');
             navigate('/', { replace: true });
           }}
-          className="text-xs text-content-muted hover:text-content-secondary transition-colors text-center"
+          className="flex items-center justify-center gap-1.5 text-xs text-content-muted hover:text-content-secondary transition-colors"
         >
-          ← Back to registration
+          <ArrowLeft size={12} />
+          Back to registration
         </button>
       </div>
     </div>

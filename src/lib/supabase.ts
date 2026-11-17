@@ -11,4 +11,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '');
+export const supabase = createClient(supabaseUrl ?? '', supabaseAnonKey ?? '', {
+  auth: {
+    // Automatically detect and process magic link tokens in the URL
+    detectSessionInUrl: true,
+    // Use localStorage to persist session across page loads
+    persistSession: true,
+  },
+});

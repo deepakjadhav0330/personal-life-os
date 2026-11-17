@@ -19,7 +19,7 @@ export function OTPRequestPage() {
   const location     = useLocation();
   const preEmail     = (location.state as { email?: string } | null)?.email ?? getPrefilledEmail();
 
-  const [email, setEmail]       = useState(preEmail);
+  const [email, setEmail]     = useState(preEmail);
   const [emailErr, setEmailErr] = useState('');
   const [apiError, setApiError] = useState('');
   const [loading, setLoading]   = useState(false);
@@ -35,27 +35,39 @@ export function OTPRequestPage() {
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
     setLoading(true);
+
     try {
-      const { error: fnError } = await supabase.functions.invoke('request-otp', {
-        body: { email: email.trim().toLowerCase() },
+      // Try direct OTP first (works for all users already in Supabase Auth)
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email: normalizedEmail,
+        options: { shouldCreateUser: false },
       });
 
-      if (fnError) {
-        const msg = (fnError as { message?: string }).message ?? '';
-        if (msg.includes('403') || msg.toLowerCase().includes('not yet approved')) {
-          setApiError('Your account has not been approved yet. Please wait for the administrator to review your request.');
-        } else if (msg.includes('423') || msg.toLowerCase().includes('suspended')) {
-          navigate('/suspended', { replace: true });
-        } else if (msg.includes('404') || msg.toLowerCase().includes('not found')) {
-          setApiError("No account found with this email. Did you register?");
-        } else {
-          setApiError(msg || 'Something went wrong. Please try again.');
+      if (otpError) {
+        // User not in Supabase Auth yet — try Edge Function (handles admin first login + approval check)
+        const { error: fnError } = await supabase.functions.invoke('request-otp', {
+          body: { email: normalizedEmail },
+        });
+
+        if (fnError) {
+          const msg = (fnError as { message?: string }).message ?? '';
+          if (msg.includes('403') || msg.toLowerCase().includes('not yet approved')) {
+            setApiError('Your account has not been approved yet.');
+          } else if (msg.includes('423') || msg.toLowerCase().includes('suspended')) {
+            navigate('/suspended', { replace: true });
+          } else if (msg.includes('404') || msg.toLowerCase().includes('not found')) {
+            setApiError('No account found with this email. Please register first.');
+          } else {
+            setApiError(msg || 'No account found with this email.');
+          }
+          return;
         }
-        return;
       }
 
-      // Success — show "check your email" state
+      // Store email for the verification step
+      sessionStorage.setItem('lifeOS_otp_email', normalizedEmail);
       setSent(true);
     } catch {
       setApiError('Unable to connect — check your internet connection.');
@@ -64,7 +76,7 @@ export function OTPRequestPage() {
     }
   }
 
-  // ── "Check your email" screen ───────────────────────────────
+  // ── Success screen ───────────────────────────────────────────
   if (sent) {
     return (
       <div className="min-h-screen-dvh flex flex-col items-center justify-center px-4 py-8">
@@ -77,26 +89,33 @@ export function OTPRequestPage() {
           </div>
 
           <GlassCard className="border-success/20 text-center">
-            <p className="text-base font-semibold text-content-primary mb-2">Check your email</p>
-            <p className="text-sm text-content-secondary leading-relaxed">
-              A sign-in link has been sent to
+            <p className="text-base font-semibold text-content-primary mb-2">
+              Check your email
             </p>
-            <p className="text-sm font-medium text-content-primary my-1">{email}</p>
             <p className="text-sm text-content-secondary leading-relaxed">
-              Click the link in the email to sign in. You can close this screen.
+              A sign-in code was sent to
+            </p>
+            <p className="text-sm font-semibold text-content-primary my-1">{email}</p>
+            <p className="text-sm text-content-secondary leading-relaxed">
+              Enter the <strong>6-digit code</strong> from the email to sign in.
             </p>
           </GlassCard>
 
-          <div className="flex flex-col gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSent(false)}
-              className="self-center"
-            >
-              Resend or use a different email
-            </Button>
-          </div>
+          <Button
+            variant="primary"
+            fullWidth
+            onClick={() => navigate('/verify-otp', { replace: true })}
+          >
+            Enter Code →
+          </Button>
+
+          <button
+            type="button"
+            onClick={() => setSent(false)}
+            className="text-xs text-content-muted hover:text-content-secondary transition-colors text-center"
+          >
+            Resend or use a different email
+          </button>
         </div>
       </div>
     );
@@ -107,13 +126,12 @@ export function OTPRequestPage() {
     <div className="min-h-screen-dvh flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-sm flex flex-col gap-6">
 
-        {/* Branding */}
         <div className="flex flex-col items-center gap-3 text-center">
           <AppLogo size={64} />
           <div>
             <h1 className="text-2xl font-bold text-content-primary">Sign In</h1>
             <p className="text-sm text-content-muted mt-1">
-              Enter your email and we'll send you a sign-in link
+              We'll send a 6-digit code to your email
             </p>
           </div>
         </div>
@@ -122,7 +140,6 @@ export function OTPRequestPage() {
           <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-4">
             Email Sign-In
           </p>
-
           <form onSubmit={handleSend} className="flex flex-col gap-4" noValidate>
             <Input
               label="Email Address"
@@ -144,7 +161,7 @@ export function OTPRequestPage() {
             )}
 
             <Button type="submit" variant="primary" fullWidth loading={loading}>
-              Send Sign-In Link
+              Send Sign-In Code
             </Button>
           </form>
         </GlassCard>

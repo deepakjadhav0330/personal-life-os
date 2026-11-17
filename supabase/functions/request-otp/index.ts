@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
 
   const { error: otpError } = await anonClient.auth.signInWithOtp({
     email: normalizedEmail,
-    options: { shouldCreateUser: isAdmin }, // only create if admin (already handled above)
+    options: { shouldCreateUser: true }, // safe — non-approved users can't access the app anyway
   });
 
   if (otpError) {

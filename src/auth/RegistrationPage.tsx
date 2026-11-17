@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { User, Mail, AlertCircle } from 'lucide-react';
 import { GlassCard, Button, Input } from '../components/ui';
 import { AppLogo } from '../components/ui/AppLogo';
+import { supabase } from '../lib/supabase';
 import { cn } from '../utils/cn';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -36,24 +37,19 @@ export function RegistrationPage() {
     setApiError('');
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const res = await fetch(`${supabaseUrl}/functions/v1/create-access-request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: name.trim(), email: email.trim().toLowerCase() }),
+      const { error: fnError } = await supabase.functions.invoke('create-access-request', {
+        body: { full_name: name.trim(), email: email.trim().toLowerCase() },
       });
 
-      if (res.status === 409) {
-        setApiError('An account with this email is already registered or pending approval.');
-        return;
-      }
-      if (res.status === 429) {
-        setApiError('Too many requests — please wait a minute and try again.');
-        return;
-      }
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        setApiError(body.error ?? 'Something went wrong. Please try again.');
+      if (fnError) {
+        const msg = (fnError as { message?: string }).message ?? '';
+        if (msg.includes('409') || msg.toLowerCase().includes('already')) {
+          setApiError('An account with this email is already registered or pending approval.');
+        } else if (msg.includes('429')) {
+          setApiError('Too many requests — please wait a minute and try again.');
+        } else {
+          setApiError(msg || 'Something went wrong. Please try again.');
+        }
         return;
       }
 

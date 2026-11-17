@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Mail, AlertCircle } from 'lucide-react';
 import { GlassCard, Button, Input } from '../components/ui';
 import { AppLogo } from '../components/ui/AppLogo';
+import { supabase } from '../lib/supabase';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -38,33 +39,21 @@ export function OTPRequestPage() {
 
     setLoading(true);
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const res = await fetch(`${supabaseUrl}/functions/v1/request-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      const { error: fnError } = await supabase.functions.invoke('request-otp', {
+        body: { email: email.trim().toLowerCase() },
       });
 
-      if (res.status === 403) {
-        setApiError('Your account has not been approved yet. Please wait for the administrator to review your request.');
-        return;
-      }
-      if (res.status === 423) {
-        navigate('/suspended', { replace: true });
-        return;
-      }
-      if (res.status === 404) {
-        setApiError("No account found with this email. Did you register? If not, start by requesting access.");
-        return;
-      }
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        let msg = 'Something went wrong. Please try again.';
-        try {
-          const body = JSON.parse(text) as { error?: string; message?: string };
-          msg = body.error ?? body.message ?? (text.length < 300 ? text : msg);
-        } catch { if (text && text.length < 300) msg = text; }
-        setApiError(msg);
+      if (fnError) {
+        const msg = (fnError as { message?: string; context?: { json?: () => Promise<{ error?: string }> } }).message ?? '';
+        if (msg.includes('403') || msg.toLowerCase().includes('not yet approved')) {
+          setApiError('Your account has not been approved yet. Please wait for the administrator to review your request.');
+        } else if (msg.includes('423') || msg.toLowerCase().includes('suspended')) {
+          navigate('/suspended', { replace: true });
+        } else if (msg.includes('404') || msg.toLowerCase().includes('not found')) {
+          setApiError("No account found with this email. Did you register?");
+        } else {
+          setApiError(msg || 'Something went wrong. Please try again.');
+        }
         return;
       }
 

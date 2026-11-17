@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { GlassCard, Button } from '../components/ui';
 import { AppLogo } from '../components/ui/AppLogo';
+import { supabase } from '../lib/supabase';
 import { useInterval } from '../hooks/useInterval';
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'not_found';
@@ -26,17 +27,15 @@ export function PendingApprovalPage() {
     if (!reg?.email) return;
     setChecking(true);
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const res = await fetch(
-        `${supabaseUrl}/functions/v1/check-status?email=${encodeURIComponent(reg.email)}`,
-      );
-      if (res.ok) {
-        const data = await res.json() as { status: ApprovalStatus };
-        setStatus(data.status);
+      const { data, error } = await supabase.functions.invoke('check-status', {
+        method: 'GET',
+        headers: { 'x-email': reg.email },
+      });
+      if (!error && data) {
+        const result = data as { status: ApprovalStatus };
+        setStatus(result.status);
         setLastChecked(new Date());
-
-        if (data.status === 'rejected') {
-          // Clear pending state so user can re-register
+        if (result.status === 'rejected') {
           localStorage.removeItem('lifeOS_pending_registration');
         }
       }

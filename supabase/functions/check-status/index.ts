@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
   if (corsResponse) return corsResponse;
 
   const url = new URL(req.url);
-  const email = url.searchParams.get('email')?.toLowerCase().trim();
+  const email = (url.searchParams.get('email') ?? req.headers.get('x-email') ?? '').toLowerCase().trim();
 
   if (!email) return error('email query parameter is required', 400);
 

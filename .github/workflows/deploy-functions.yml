@@ -24,3 +24,18 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ""
+
+      - name: Update Magic Link email template to show OTP code
+        run: |
+          HTTP=$(curl -s -w "\n%{http_code}" -X PATCH \
+            "https://api.supabase.com/v1/projects/${{ secrets.SUPABASE_PROJECT_ID }}/config/auth" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ACCESS_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "mailer_subjects_magic_link": "Your Life OS sign-in code",
+              "mailer_templates_magic_link_content": "<div style=\"font-family:sans-serif;padding:32px\"><h2>Sign in to Life OS</h2><p>Your sign-in code:</p><h1 style=\"font-size:48px;letter-spacing:12px;color:#7c3aed\">{{ .Token }}</h1><p>Enter this in the app. Expires in 1 hour.</p></div>"
+            }')
+          STATUS=$(echo "$HTTP" | tail -1)
+          BODY=$(echo "$HTTP" | head -n -1)
+          echo "HTTP Status: $STATUS"
+          echo "Response: $BODY"

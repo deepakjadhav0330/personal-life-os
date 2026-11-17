@@ -1,3 +1,4 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.47.10';
 import { handleCors, json, error } from '../_shared/cors.ts';
 import { getServiceClient } from '../_shared/supabase.ts';
 
@@ -15,78 +16,81 @@ Deno.serve(async (req) => {
   if (!email?.trim()) return error('Email is required', 400);
 
   const normalizedEmail = email.trim().toLowerCase();
-  const supabase = getServiceClient();
-  const adminEmail = Deno.env.get('ADMIN_EMAIL')?.toLowerCase().trim();
+  const supabase    = getServiceClient();
+  const adminEmail  = Deno.env.get('ADMIN_EMAIL')?.toLowerCase().trim();
+  const isAdmin     = !!adminEmail && normalizedEmail === adminEmail;
 
-  // Look up profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, status')
-    .eq('email', normalizedEmail)
-    .maybeSingle();
+  if (isAdmin) {
+    // Admin path — ensure user + profile exist with admin role
+    const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+    const existing = users.find(u => u.email === normalizedEmail);
 
-  if (!profile) {
-    // Check if this is the admin email — admin can sign in even without a profile
-    // (profile gets created on first successful sign-in)
-    if (adminEmail && normalizedEmail === adminEmail) {
-      // Allow admin to sign in — they may not have a profile yet
-    } else {
-      return error('No approved account found for this email', 404);
-    }
-  } else {
-    if (profile.status === 'suspended') return error('Account is suspended', 423);
-    if (profile.status === 'pending')   return error('Account is not yet approved', 403);
-    // status === 'approved' — proceed
-
-    // If this is the admin email, ensure admin role is set
-    if (adminEmail && normalizedEmail === adminEmail) {
-      await supabase.auth.admin.updateUserById(profile.id, {
-        app_metadata: { role: 'admin' },
-      });
-    }
-  }
-
-  // If the admin doesn't have an auth user yet, create one first
-  let userId = profile?.id;
-  if (!userId && adminEmail && normalizedEmail === adminEmail) {
-    // Look up by email in auth.users
-    const { data: { users: authUsers } } = await supabase.auth.admin.listUsers({ perPage: 1 });
-    const existing = authUsers.find(u => u.email === normalizedEmail);
-    if (existing) {
-      userId = existing.id;
-      // Set admin role
-      await supabase.auth.admin.updateUserById(userId, { app_metadata: { role: 'admin' } });
-    } else {
-      // Create admin user
-      const { data: newUser } = await supabase.auth.admin.createUser({
+    if (!existing) {
+      // First-ever admin sign-in — create auth user
+      const { data: created, error: createErr } = await supabase.auth.admin.createUser({
         email: normalizedEmail,
         email_confirm: true,
         app_metadata: { role: 'admin' },
+        user_metadata: { full_name: 'Administrator' },
       });
-      if (newUser?.user) {
-        userId = newUser.user.id;
-        // Create admin profile
-        await supabase.from('profiles').insert({
-          id: userId,
+      if (createErr) {
+        console.error('[request-otp] admin create error:', createErr);
+        return error('Could not create admin account', 500);
+      }
+      if (created?.user) {
+        await supabase.from('profiles').upsert({
+          id: created.user.id,
           full_name: 'Administrator',
           email: normalizedEmail,
           status: 'approved',
           approved_at: new Date().toISOString(),
           has_seen_disclosure: true,
-        }).onConflict('id').ignore();
+        }, { onConflict: 'id' });
       }
+    } else {
+      // Ensure admin role is set
+      if (existing.app_metadata?.role !== 'admin') {
+        await supabase.auth.admin.updateUserById(existing.id, {
+          app_metadata: { role: 'admin' },
+        });
+      }
+      // Ensure profile exists
+      await supabase.from('profiles').upsert({
+        id: existing.id,
+        full_name: existing.user_metadata?.full_name ?? 'Administrator',
+        email: normalizedEmail,
+        status: 'approved',
+        approved_at: existing.created_at,
+        has_seen_disclosure: true,
+      }, { onConflict: 'id' });
     }
+  } else {
+    // Regular user path — must have an approved profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('status')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
+
+    if (!profile)                       return error('No account found for this email', 404);
+    if (profile.status === 'suspended') return error('Account is suspended', 423);
+    if (profile.status === 'pending')   return error('Account is not yet approved', 403);
   }
 
-  // Generate OTP link (this sends the email)
-  const { error: otpError } = await supabase.auth.admin.generateLink({
-    type: 'magiclink',
+  // Send the 6-digit OTP via anon client
+  const anonClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+  );
+
+  const { error: otpError } = await anonClient.auth.signInWithOtp({
     email: normalizedEmail,
+    options: { shouldCreateUser: isAdmin }, // only create if admin (already handled above)
   });
 
   if (otpError) {
     console.error('[request-otp] OTP error:', otpError);
-    return error('Failed to send sign-in code — please try again', 500);
+    return error(`Failed to send sign-in code: ${otpError.message}`, 500);
   }
 
   return json({ success: true });

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Zap, Mail, AlertCircle } from 'lucide-react';
+import { Mail, AlertCircle } from 'lucide-react';
 import { GlassCard, Button, Input } from '../components/ui';
+import { AppLogo } from '../components/ui/AppLogo';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -78,9 +79,7 @@ export function OTPRequestPage() {
 
         {/* Branding */}
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="w-16 h-16 rounded-2xl accent-gradient flex items-center justify-center shadow-accent-sm">
-            <Zap size={28} className="text-white" />
-          </div>
+          <AppLogo size={64} />
           <div>
             <h1 className="text-2xl font-bold text-content-primary">Sign In</h1>
             <p className="text-sm text-content-muted mt-1">

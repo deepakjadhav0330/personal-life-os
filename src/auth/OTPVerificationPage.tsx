@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { GlassCard, Button } from '../components/ui';
 import { supabase } from '../lib/supabase';
+import { AppLogo } from '../components/ui/AppLogo';
 import { cn } from '../utils/cn';
 
 const RESEND_COOLDOWN = 60; // seconds
@@ -127,14 +128,10 @@ export function OTPVerificationPage() {
 
         {/* Branding */}
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="w-16 h-16 rounded-2xl accent-gradient flex items-center justify-center shadow-accent-sm">
-            <Zap size={28} className="text-white" />
-          </div>
+          <AppLogo size={64} />
           <div>
             <h1 className="text-2xl font-bold text-content-primary">Enter Your Code</h1>
-            <p className="text-sm text-content-muted mt-1">
-              A 6-digit code was sent to
-            </p>
+            <p className="text-sm text-content-muted mt-1">A 6-digit code was sent to</p>
             <p className="text-sm font-medium text-content-secondary">{email}</p>
           </div>
         </div>

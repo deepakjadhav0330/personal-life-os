@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, CheckCircle2, XCircle, Zap, RefreshCw } from 'lucide-react';
+import { Clock, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { GlassCard, Button } from '../components/ui';
+import { AppLogo } from '../components/ui/AppLogo';
 import { useInterval } from '../hooks/useInterval';
 
 type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'not_found';
@@ -66,9 +67,7 @@ export function PendingApprovalPage() {
 
         {/* Branding */}
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="w-16 h-16 rounded-2xl accent-gradient flex items-center justify-center shadow-accent-sm">
-            <Zap size={28} className="text-white" />
-          </div>
+          <AppLogo size={64} />
           <h1 className="text-2xl font-bold text-content-primary">Life OS</h1>
         </div>
 

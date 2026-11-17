@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, User, Mail, AlertCircle, Info } from 'lucide-react';
+import { User, Mail, AlertCircle } from 'lucide-react';
 import { GlassCard, Button, Input } from '../components/ui';
+import { AppLogo } from '../components/ui/AppLogo';
 import { cn } from '../utils/cn';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -75,9 +76,7 @@ export function RegistrationPage() {
 
         {/* Branding */}
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="w-16 h-16 rounded-2xl accent-gradient flex items-center justify-center shadow-accent-sm">
-            <Zap size={28} className="text-white" />
-          </div>
+          <AppLogo size={64} />
           <div>
             <h1 className="text-2xl font-bold text-content-primary">Life OS</h1>
             <p className="text-sm text-content-muted mt-1">
@@ -116,15 +115,6 @@ export function RegistrationPage() {
               leftElement={<Mail size={15} />}
               disabled={loading}
             />
-
-            {/* Analytics disclosure */}
-            <div className="flex items-start gap-2 glass-1 rounded-input px-3 py-2.5">
-              <Info size={13} className="text-accent shrink-0 mt-0.5" />
-              <p className="text-[11px] text-content-muted leading-relaxed">
-                By requesting access, you agree that the app owner can see your feature usage activity
-                (which modules you open and how often). Your personal records are never transmitted.
-              </p>
-            </div>
 
             {apiError && (
               <div className="flex items-start gap-2 glass-1 rounded-input px-3 py-2.5 border border-danger/30">

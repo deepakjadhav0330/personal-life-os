@@ -4,6 +4,7 @@ import type { Task, TaskPriority, TaskCategory, RecurringFrequency } from '../..
 import { Button, Input, Select, Textarea, Toggle } from '../../components/ui';
 import { toast } from '../../stores/useToastStore';
 import { todayStr } from '../../utils/dates';
+import { useAnalytics } from '../../analytics/AnalyticsContext';
 
 interface TaskFormProps {
   taskId?: number | null;
@@ -39,6 +40,7 @@ export function TaskForm({ taskId, onClose, defaultDueDate }: TaskFormProps) {
   const [recurringFrequency, setRecurringFrequency] = useState<RecurringFrequency>('weekly');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { track } = useAnalytics();
 
   useEffect(() => {
     if (!taskId) return;
@@ -79,6 +81,7 @@ export function TaskForm({ taskId, onClose, defaultDueDate }: TaskFormProps) {
         toast.success('Task updated!');
       } else {
         await db.tasks.add(data);
+        track('task_created', { priority, has_due_date: !!dueDate, is_recurring: isRecurring });
         toast.success('Task added!');
       }
       onClose();

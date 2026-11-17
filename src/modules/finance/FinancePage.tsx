@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Modal, Input, Select, Toggle, IconButton } from '../../components/ui';
+import { useAnalytics } from '../../analytics/AnalyticsContext';
 import { ReceiptScanner } from '../../components/finance/ReceiptScanner';
 import { toast } from '../../stores/useToastStore';
 import { useSetting } from '../../hooks/useSetting';
@@ -40,6 +41,7 @@ export function FinancePage() {
   const [addType, setAddType] = useState<'expense' | 'income'>('expense');
   const [isScanOpen, setIsScanOpen] = useState(false);
   const [scanPrefill, setScanPrefill] = useState<{ amount?: number; description?: string; category?: string } | null>(null);
+  const { track } = useAnalytics();
   const [currency] = useSetting('currency', 'INR');
   const location = useLocation();
 
@@ -89,6 +91,7 @@ export function FinancePage() {
           currency={currency}
           onResult={handleScanResult}
           onClose={() => setIsScanOpen(false)}
+          onScanStarted={() => track('receipt_scanned', {})}
         />
       </BottomSheet>
 
@@ -312,6 +315,7 @@ function TransactionForm({ txnId, onClose, initialType, prefill }: {
   const [amount, setAmount] = useState(prefill?.amount ? String(prefill.amount) : '');
   const [date, setDate] = useState(todayStr());
   const [category, setCategory] = useState(prefill?.category ?? 'food');
+  const { track } = useAnalytics();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('upi');
   const [description, setDescription] = useState(prefill?.description ?? '');
   const [isRecurring, setIsRecurring] = useState(false);
@@ -339,7 +343,7 @@ function TransactionForm({ txnId, onClose, initialType, prefill }: {
         createdAt: now, updatedAt: now,
       };
       if (txnId) { await db.transactions.update(txnId, data); toast.success('Updated!'); }
-      else { await db.transactions.add(data); toast.success('Added!'); }
+      else { await db.transactions.add(data); track('transaction_created', { transaction_type: type, is_recurring: isRecurring }); toast.success('Added!'); }
       onClose();
     } catch { toast.error('Failed to save'); } finally { setLoading(false); }
   };
@@ -380,6 +384,7 @@ function BudgetsTab() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [budgetCategory, setBudgetCategory] = useState('food');
   const [budgetLimit, setBudgetLimit] = useState('');
+  const { track } = useAnalytics();
 
   const now = new Date();
   const year = now.getFullYear();
@@ -413,6 +418,7 @@ function BudgetsTab() {
       await db.budgets.update(existing.id, { limit, updatedAt: now });
     } else {
       await db.budgets.add({ year, month, category: budgetCategory, limit, currency, createdAt: now, updatedAt: now });
+      track('budget_created', {});
     }
     toast.success('Budget saved!');
     setBudgetLimit('');

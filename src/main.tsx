@@ -1,10 +1,25 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { App } from './App.tsx'
-import './index.css'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { App } from './App.tsx';
+import './index.css';
+import { AuthProvider } from './auth/AuthContext.tsx';
+import { AnalyticsProvider } from './analytics/AnalyticsContext.tsx';
+import { useAuth } from './auth/AuthContext.tsx';
+
+// Inner wrapper so AnalyticsProvider can read the session from AuthContext
+function AppWithProviders() {
+  const { session } = useAuth();
+  return (
+    <AnalyticsProvider accessToken={session?.access_token ?? null}>
+      <App />
+    </AnalyticsProvider>
+  );
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <AuthProvider>
+      <AppWithProviders />
+    </AuthProvider>
   </React.StrictMode>,
-)
+);

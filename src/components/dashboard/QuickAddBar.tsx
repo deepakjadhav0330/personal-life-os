@@ -4,6 +4,7 @@ import { db } from '../../db/database';
 import { parseQuickAdd, type QuickAddResult } from '../../utils/quickAdd';
 import { toast } from '../../stores/useToastStore';
 import { useSetting } from '../../hooks/useSetting';
+import { useAnalytics } from '../../analytics/AnalyticsContext';
 import { todayStr } from '../../utils/dates';
 import { Sparkles, X, ArrowRight } from 'lucide-react';
 import { cn } from '../../utils/cn';
@@ -26,6 +27,7 @@ export function QuickAddBar({ initialValue }: QuickAddBarProps) {
   const [parsed, setParsed]     = useState<QuickAddResult | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [loading, setLoading]   = useState(false);
+  const { track } = useAnalytics();
 
   const inputRef   = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -191,6 +193,7 @@ export function QuickAddBar({ initialValue }: QuickAddBarProps) {
       }
 
       toast.success(result.preview);
+      track('quick_add_used', { result_type: result.type });
       setInput('');
       setParsed(null);
       setIsActive(false);

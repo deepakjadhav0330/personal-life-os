@@ -5,7 +5,7 @@ import type {
   Workout, WorkoutSet, Exercise, BodyMeasurement,
   NutritionLog, FoodItem, Transaction, Budget,
   JournalEntry, Goal, Milestone, Reminder,
-  LearningItem, LearningSession,
+  LearningItem, LearningSession, QueuedAnalyticsEvent,
 } from './schema';
 
 class PersonalLifeOSDatabase extends Dexie {
@@ -27,6 +27,7 @@ class PersonalLifeOSDatabase extends Dexie {
   reminders!: Table<Reminder>;
   learningItems!: Table<LearningItem>;
   learningSessions!: Table<LearningSession>;
+  analyticsQueue!: Table<QueuedAnalyticsEvent>;
 
   constructor() {
     super('PersonalLifeOS');
@@ -50,6 +51,11 @@ class PersonalLifeOSDatabase extends Dexie {
       reminders:         '++id, scheduledAt, type, status',
       learningItems:     '++id, type, status',
       learningSessions:  '++id, learningItemId, date',
+    });
+
+    // Version 2: add analytics queue for offline event buffering
+    this.version(2).stores({
+      analytics_queue: '++id, &event_key, occurred_at',
     });
   }
 }

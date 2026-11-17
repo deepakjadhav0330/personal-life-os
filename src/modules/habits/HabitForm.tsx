@@ -4,6 +4,7 @@ import type { HabitCategory } from '../../db/schema';
 import { Button, Input, Select, Textarea } from '../../components/ui';
 import { toast } from '../../stores/useToastStore';
 import { cn } from '../../utils/cn';
+import { useAnalytics } from '../../analytics/AnalyticsContext';
 
 interface HabitFormProps {
   habitId?: number | null;
@@ -66,6 +67,7 @@ export function HabitForm({ habitId, onClose }: HabitFormProps) {
   const [customDays,  setCustomDays]  = useState<number[]>([1, 2, 3, 4, 5]); // default Mon-Fri
   const [color,       setColor]       = useState(COLORS[0]);
   const [loading,     setLoading]     = useState(false);
+  const { track } = useAnalytics();
 
   useEffect(() => {
     if (!habitId) return;
@@ -127,6 +129,7 @@ export function HabitForm({ habitId, onClose }: HabitFormProps) {
         toast.success('Habit updated!');
       } else {
         await db.habits.add({ ...data, order: count, createdAt: new Date().toISOString() });
+        track('habit_created', { frequency, category });
         toast.success('Habit created!');
       }
       onClose();

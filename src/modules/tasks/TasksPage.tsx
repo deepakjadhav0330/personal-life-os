@@ -11,6 +11,7 @@ import { todayStr, formatDateRelative, isOverdue } from '../../utils/dates';
 import { Plus, CheckCircle2, Trash2, Edit3, Search, X, AlertCircle } from 'lucide-react';
 import { IconButton } from '../../components/ui';
 import { format, addDays, parseISO, addMonths } from 'date-fns';
+import { useAnalytics } from '../../analytics/AnalyticsContext';
 
 /** Next weekday (Mon–Fri) on or after the day after fromDate */
 function nextWeekdayAfter(d: Date): string {
@@ -37,6 +38,7 @@ export function TasksPage() {
   const [showSearch, setShowSearch] = useState(false);
   const today = todayStr();
   const location = useLocation();
+  const { track } = useAnalytics();
 
   // Auto-open from iOS Shortcuts ?action=task deep link
   useEffect(() => {
@@ -84,6 +86,7 @@ export function TasksPage() {
     try {
       const now = new Date().toISOString();
       await db.tasks.update(task.id!, { status: 'completed', completedAt: now, updatedAt: now });
+      track('task_completed', {});
       if (task.isRecurring && task.recurringFrequency && task.dueDate) {
         const base = parseISO(task.dueDate);
         const nextDate =

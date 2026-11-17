@@ -4,6 +4,7 @@ import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Badge, Input, Select } from '../../components/ui';
 import { toast } from '../../stores/useToastStore';
+import { useAnalytics } from '../../analytics/AnalyticsContext';
 import { todayStr, formatDate } from '../../utils/dates';
 import { useSetting } from '../../hooks/useSetting';
 import { CalendarDays, Bell, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
@@ -193,6 +194,7 @@ function RemindersView({ externalAddOpen, onExternalAddClose }: { externalAddOpe
   const [scheduledDate, setScheduledDate] = useState(todayStr());
   const [scheduledTime, setScheduledTime] = useState('09:00');
   const [repeat, setRepeat] = useState<'once' | 'daily' | 'weekly' | 'monthly'>('once');
+  const { track } = useAnalytics();
 
   const reminders = useLiveQuery(() => db.reminders.orderBy('scheduledAt').toArray(), [], []);
 
@@ -207,6 +209,7 @@ function RemindersView({ externalAddOpen, onExternalAddClose }: { externalAddOpe
       repeat, type: 'general', status: 'pending',
       createdAt: new Date().toISOString(),
     });
+    track('reminder_created', { repeat_type: repeat });
     toast.success('Reminder set!');
     setTitle(''); closeSheet();
   };

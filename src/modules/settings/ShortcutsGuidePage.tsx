@@ -4,7 +4,7 @@ import { GlassCard } from '../../components/ui';
 import { Copy, Check, Zap } from 'lucide-react';
 import { toast } from '../../stores/useToastStore';
 
-const BASE_URL = 'https://deepakjadhav0330.github.io/personal-life-os/#/';
+const BASE_URL = `${import.meta.env.VITE_APP_URL ?? 'https://your-project.pages.dev'}/#/`;
 
 // ── Deep link catalogue ──────────────────────────────────────
 const SHORTCUTS = [

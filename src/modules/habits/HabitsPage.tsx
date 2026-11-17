@@ -11,6 +11,7 @@ import type { Habit } from '../../db/schema';
 import { Plus, Check, Flame, BarChart3, Trash2, Edit3 } from 'lucide-react';
 import { IconButton } from '../../components/ui';
 import { format, subDays } from 'date-fns';
+import { useAnalytics } from '../../analytics/AnalyticsContext';
 
 export function HabitsPage() {
   const [activeTab, setActiveTab] = useState<'today' | 'stats'>('today');
@@ -38,6 +39,7 @@ export function HabitsPage() {
   const completedCount = completedIds.size;
   const totalCount = habits?.length ?? 0;
   const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  const { track } = useAnalytics();
 
   async function toggleHabit(habit: Habit) {
     if (!habit.id) return;
@@ -48,6 +50,7 @@ export function HabitsPage() {
     } else {
       // Complete
       await db.habitCompletions.add({ habitId: habit.id, date: today, completedAt: new Date().toISOString() });
+      track('habit_completed', {});
       if (navigator.vibrate) navigator.vibrate(10);
     }
   }

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useAnalytics } from '../../analytics/AnalyticsContext';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
 import {
@@ -327,6 +328,7 @@ function LearningDetail({
   const [sessionNotes, setSessionNotes] = useState('');
   const [sessionTakeaway, setSessionTakeaway] = useState('');
   const [newTakeaway, setNewTakeaway] = useState('');
+  const { track } = useAnalytics();
 
   const totalMins = sessions.reduce((s, l) => s + l.durationMinutes, 0);
   const cfg = TYPE_CONFIG[item.type];
@@ -347,6 +349,7 @@ function LearningDetail({
         takeaway: sessionTakeaway.trim() || undefined,
         createdAt: now,
       });
+      track('learning_session_logged', { item_type: item.type });
       const updates: Partial<LearningItem> = { progress: newProgress, updatedAt: now };
       if (item.type === 'book' && item.totalPages) {
         updates.currentPage = Math.round((newProgress / 100) * item.totalPages);

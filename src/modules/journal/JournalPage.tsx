@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Textarea, Input, Modal } from '../../components/ui';
+import { useAnalytics } from '../../analytics/AnalyticsContext';
 import { toast } from '../../stores/useToastStore';
 import { todayStr, formatDate } from '../../utils/dates';
 import type { JournalMood } from '../../db/schema';
@@ -53,6 +54,7 @@ function JournalEntries({ autoOpen = false }: { autoOpen?: boolean }) {
   const [mood, setMood] = useState<JournalMood | null>(null);
   const [freeText, setFreeText] = useState('');
   const [useTemplate, setUseTemplate] = useState(false);
+  const { track } = useAnalytics();
   const [templateAnswers, setTemplateAnswers] = useState<Record<string, string>>({});
   const [gratitude, setGratitude] = useState(['', '', '']);
   const [search, setSearch] = useState('');
@@ -117,6 +119,7 @@ function JournalEntries({ autoOpen = false }: { autoOpen?: boolean }) {
       toast.success('Entry updated!');
     } else {
       await db.journalEntries.add({ ...data, createdAt: now });
+      track('journal_entry_created', { entry_type: data.type as string, has_mood: !!mood });
       toast.success('Entry saved!');
     }
     setIsEditing(false);
@@ -251,6 +254,7 @@ function JournalEntries({ autoOpen = false }: { autoOpen?: boolean }) {
 function ThoughtAnalysis() {
   const [isEditing, setIsEditing] = useState(false);
   const [fields, setFields] = useState<Record<string, string>>({});
+  const { track } = useAnalytics();
 
   const analyses = useLiveQuery(
     () => db.journalEntries.where('type').equals('thought-analysis').reverse().sortBy('date').then(r => r.slice(0, 20)),
@@ -272,6 +276,7 @@ function ThoughtAnalysis() {
       date: todayStr(), type: 'thought-analysis',
       thoughtAnalysis: fields, createdAt: now, updatedAt: now,
     });
+    track('journal_entry_created', { entry_type: 'thought-analysis', has_mood: false });
     toast.success('Reflection saved!');
     setIsEditing(false);
     setFields({});

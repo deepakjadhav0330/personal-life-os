@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
-  base: '/personal-life-os/',
+  base: '/',
   plugins: [
     react(),
     VitePWA({
@@ -17,8 +17,8 @@ export default defineConfig({
         background_color: '#06060f',
         display: 'standalone',
         orientation: 'portrait',
-        scope: '/personal-life-os/',
-        start_url: '/personal-life-os/',
+        scope: '/',
+        start_url: '/',
         categories: ['productivity', 'lifestyle', 'health', 'finance'],
         icons: [
           { src: '/icons/icon-72.png', sizes: '72x72', type: 'image/png' },

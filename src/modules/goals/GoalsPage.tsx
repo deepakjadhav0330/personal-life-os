@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { useAnalytics } from '../../analytics/AnalyticsContext';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Badge, ProgressBar, Input, Select, Textarea, Modal, IconButton } from '../../components/ui';
@@ -165,6 +166,7 @@ function GoalForm({ goalId, onClose }: { goalId: number | null; onClose: () => v
   const [description, setDescription] = useState('');
   const [targetDate, setTargetDate] = useState('');
   const [color, setColor] = useState(GOAL_COLORS[0]);
+  const { track } = useAnalytics();
   const [loading, setLoading] = useState(false);
   const [milestones, setMilestones] = useState<{ title: string }[]>([]);
 
@@ -193,6 +195,7 @@ function GoalForm({ goalId, onClose }: { goalId: number | null; onClose: () => v
           color, status: 'active', progressMode: 'milestones',
           createdAt: now, updatedAt: now,
         });
+        track('goal_created', { category, progress_mode: 'milestones' });
         // Add milestones
         for (let i = 0; i < milestones.length; i++) {
           if (milestones[i].title.trim()) {

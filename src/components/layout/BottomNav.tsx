@@ -3,12 +3,13 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   LayoutDashboard, CheckSquare, Dumbbell, DollarSign, Grid3X3,
-  Flame, BookOpen, Target, CalendarDays, Settings, GraduationCap,
+  Flame, BookOpen, Target, CalendarDays, Settings, GraduationCap, ShieldCheck,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { db } from '../../db/database';
 import { todayStr } from '../../utils/dates';
 import { formatMinutes } from '../../utils/format';
+import { useAuth } from '../../auth/AuthContext';
 
 // ── Primary tabs ──────────────────────────────────────────────
 const primaryTabs = [
@@ -20,14 +21,7 @@ const primaryTabs = [
 ];
 
 // ── More drawer module config ─────────────────────────────────
-const moreModules = [
-  { path: '/habits',   label: 'Habits',   icon: Flame,          color: '#f59e0b' },
-  { path: '/journal',  label: 'Journal',  icon: BookOpen,       color: '#8b5cf6' },
-  { path: '/goals',    label: 'Goals',    icon: Target,         color: '#22c55e' },
-  { path: '/learning', label: 'Learning', icon: GraduationCap,  color: '#3b82f6' },
-  { path: '/calendar', label: 'Calendar', icon: CalendarDays,   color: '#06b6d4' },
-  { path: '/settings', label: 'Settings', icon: Settings,       color: '#94a3b8' },
-];
+// (Base modules defined inside MoreDrawer to include admin conditionally)
 
 // ── Main component ────────────────────────────────────────────
 export function BottomNav() {
@@ -119,6 +113,7 @@ function MoreDrawer({
   navigate: (path: string) => void;
 }) {
   const today = todayStr();
+  const { isAdmin } = useAuth();
 
   // Live stats per module card
   const habitsTotal  = useLiveQuery(() => db.habits.filter(h => !!h.isActive).count(), [], 0);
@@ -142,7 +137,21 @@ function MoreDrawer({
     '/learning': learningMins ? `${formatMinutes(learningMins ?? 0)} this week` : 'Books & courses',
     '/calendar': upcomingReminders ? `${upcomingReminders} upcoming` : 'Events & reminders',
     '/settings': 'Preferences',
+    '/admin':    'User management',
   };
+
+  const baseModules = [
+    { path: '/habits',   label: 'Habits',   icon: Flame,          color: '#f59e0b' },
+    { path: '/journal',  label: 'Journal',  icon: BookOpen,       color: '#8b5cf6' },
+    { path: '/goals',    label: 'Goals',    icon: Target,         color: '#22c55e' },
+    { path: '/learning', label: 'Learning', icon: GraduationCap,  color: '#3b82f6' },
+    { path: '/calendar', label: 'Calendar', icon: CalendarDays,   color: '#06b6d4' },
+    { path: '/settings', label: 'Settings', icon: Settings,       color: '#94a3b8' },
+  ];
+
+  const displayModules = isAdmin
+    ? [...baseModules, { path: '/admin', label: 'Admin', icon: ShieldCheck, color: '#7c3aed' }]
+    : baseModules;
 
   const goTo = (path: string) => { navigate(path); onClose(); };
 
@@ -170,7 +179,7 @@ function MoreDrawer({
         {/* 2 × 3 module grid */}
         <div className="p-4">
           <div className="grid grid-cols-2 gap-3">
-            {moreModules.map(mod => (
+            {displayModules.map(mod => (
               <button
                 key={mod.path}
                 onClick={() => goTo(mod.path)}

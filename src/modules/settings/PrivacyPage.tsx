@@ -11,28 +11,27 @@ export function PrivacyPage() {
         <GlassCard className="border-success/20">
           <div className="flex items-center gap-3 mb-2">
             <Shield size={20} className="text-success" />
-            <p className="text-sm font-semibold text-success">Your data stays on your device</p>
+            <p className="text-sm font-semibold text-success">Your personal records stay on your device</p>
           </div>
           <p className="text-sm text-content-secondary leading-relaxed">
-            Personal Life OS is designed from the ground up with privacy as a core value. Your personal information never leaves your device.
+            Life OS is a private, invite-only application. Your personal records (tasks, journal, finances, fitness data) are stored locally and never transmitted to any server. However, feature-usage analytics are collected and visible to the app administrator.
           </p>
         </GlassCard>
 
         <PrivacySection icon={<Database size={16} />} title="Where is my data stored?">
-          Your data is stored in IndexedDB, a local database built into your browser. It lives entirely on your device — your iPhone or computer.
-          It is included in your iPhone's iCloud device backup if you have iCloud backup enabled for Safari (Settings → Apple ID → iCloud → Safari).
+          Your personal data is stored in IndexedDB, a local database built into your browser. It lives entirely on your device and is included in your iPhone's iCloud device backup if you have iCloud backup enabled for Safari.
         </PrivacySection>
 
         <PrivacySection icon={<Wifi size={16} />} title="What is transmitted to servers?">
-          <strong className="text-success">Nothing personal.</strong> The only network activity is loading the app itself (HTML, JavaScript, CSS files) from Cloudflare's CDN. These are static files — no personal data is ever sent to any server.
+          <strong className="text-warning">Feature usage analytics are transmitted</strong> to the administrator's backend (Supabase). This includes: which modules you open, what feature actions you take (e.g., created a task, logged a workout), session timing, and your account information. Your personal record content is never transmitted.
         </PrivacySection>
 
-        <PrivacySection icon={<Cloud size={16} />} title="Cloudflare Pages hosting">
-          The app files are served from Cloudflare Pages. Cloudflare delivers HTML, CSS, and JavaScript — it has zero knowledge of your tasks, habits, finances, journal entries, or any other personal data you enter.
+        <PrivacySection icon={<Cloud size={16} />} title="Analytics and account data">
+          As a condition of access to this private application, the administrator can see your name, email, feature usage activity, session history, and engagement statistics. This data is used to improve the app. The administrator cannot see your tasks, journal entries, financial transactions, or any other personal content.
         </PrivacySection>
 
         <PrivacySection icon={<Lock size={16} />} title="What we don't collect">
-          No analytics. No advertising. No tracking pixels. No third-party scripts. No user accounts. No registration. No cookies tracking you across websites.
+          No advertising. No third-party tracking scripts. No cookies across websites. No personal record content. We collect the minimum information needed to run a private invite-only application.
         </PrivacySection>
 
         <GlassCard>

@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard, Button, Tabs, EmptyState, BottomSheet, ProgressBar } from '../../components/ui';
+import { useAnalytics } from '../../analytics/AnalyticsContext';
 import { toast } from '../../stores/useToastStore';
 import { todayStr, formatDate, getDaysAgo } from '../../utils/dates';
 import { useSetting } from '../../hooks/useSetting';
@@ -69,6 +70,7 @@ function BodyTab() {
   const [measureValue, setMeasureValue] = useState('');
   const [measureDate, setMeasureDate] = useState(todayStr());
   const [_weightUnit] = useSetting('weightUnit', 'kg');
+  const { track } = useAnalytics();
 
   const measurements = useLiveQuery(
     () => db.bodyMeasurements.orderBy('date').reverse().toArray(),
@@ -94,6 +96,7 @@ function BodyTab() {
       value: val, unit: unitMap[measureType] ?? 'cm',
       createdAt: new Date().toISOString(),
     });
+    track('measurement_logged', { measurement_type: measureType });
     toast.success('Measurement saved!');
     setMeasureValue(''); setIsFormOpen(false);
   };
@@ -190,6 +193,7 @@ function BodyTab() {
 function WorkoutsTab() {
   const [isStarting, setIsStarting] = useState(false);
   const [workoutName, setWorkoutName] = useState('');
+  const { track } = useAnalytics();
 
   const workouts = useLiveQuery(
     () => db.workouts.where('status').equals('completed').reverse().sortBy('date').then(r => r.slice(0, 20)),
@@ -202,6 +206,7 @@ function WorkoutsTab() {
       name, date: todayStr(), startedAt: new Date().toISOString(),
       status: 'active',
     });
+    track('workout_logged', { exercise_count: 0, duration_minutes: 0 });
     toast.success(`${name} started!`);
     setIsStarting(false);
   };
@@ -273,6 +278,7 @@ function NutritionTab() {
   const [protein, setProtein] = useState('');
   const [carbs, setCarbs] = useState('');
   const [fat, setFat] = useState('');
+  const { track } = useAnalytics();
   const [meal, setMeal] = useState<'breakfast' | 'lunch' | 'dinner' | 'snacks'>('breakfast');
   const [caloriesManuallyEdited, setCaloriesManuallyEdited] = useState(false);
 
@@ -340,6 +346,7 @@ function NutritionTab() {
       }
       await db.nutritionLogs.update(log.id, { meals, updatedAt: now });
     }
+    track('nutrition_logged', { meal_name: meal });
     toast.success('Food logged!');
     setFoodName(''); setCalories(''); setProtein(''); setCarbs(''); setFat('');
     setCaloriesManuallyEdited(false);

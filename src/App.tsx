@@ -20,6 +20,16 @@ import { InstallGuidePage } from './modules/settings/InstallGuidePage';
 import { ShortcutsGuidePage } from './modules/settings/ShortcutsGuidePage';
 import { seedDatabase } from './db/seeds';
 import { db } from './db/database';
+import { AuthGate } from './auth/AuthGate';
+import { PendingApprovalPage } from './auth/PendingApprovalPage';
+import { OTPRequestPage } from './auth/OTPRequestPage';
+import { OTPVerificationPage } from './auth/OTPVerificationPage';
+import { AdminGuard } from './admin/AdminGuard';
+import { AdminLayout } from './admin/AdminLayout';
+import { AdminOverviewPage } from './admin/AdminOverviewPage';
+import { AdminUsersPage } from './admin/AdminUsersPage';
+import { AdminUserDetailPage } from './admin/AdminUserDetailPage';
+import { AdminProductPage } from './admin/AdminProductPage';
 
 export function App() {
   useEffect(() => {
@@ -29,28 +39,50 @@ export function App() {
 
   return (
     <HashRouter>
-      {/* z-index:-1 keeps blobs behind all content without creating
-          a stacking context that would trap modal/sheet z-indices    */}
       <AmbientBackground />
       <ToastContainer />
       <DeepLinkHandler />
       <Routes>
-        <Route path="/" element={<AppLayout />}>
+        {/* ── Auth-only routes (outside AppLayout) ── */}
+        <Route path="/pending"    element={<PendingApprovalPage />} />
+        <Route path="/signin"     element={<OTPRequestPage />} />
+        <Route path="/verify-otp" element={<OTPVerificationPage />} />
+
+        {/* ── Admin routes ── */}
+        <Route path="/admin" element={<AuthGate><AdminGuard /></AuthGate>}>
+          <Route element={<AdminLayout />}>
+            <Route index          element={<AdminOverviewPage />} />
+            <Route path="users"   element={<AdminUsersPage />} />
+            <Route path="users/:userId" element={<AdminUserDetailPage />} />
+            <Route path="product" element={<AdminProductPage />} />
+          </Route>
+        </Route>
+
+        {/* ── Main app routes ── */}
+        <Route path="/" element={
+          <AuthGate>
+            <AppLayout />
+          </AuthGate>
+        }>
           <Route index element={<DashboardPage />} />
-          <Route path="tasks" element={<TasksPage />} />
-          <Route path="habits" element={<HabitsPage />} />
-          <Route path="fitness" element={<FitnessPage />} />
-          <Route path="finance" element={<FinancePage />} />
-          <Route path="journal" element={<JournalPage />} />
-          <Route path="goals" element={<GoalsPage />} />
-          <Route path="calendar" element={<CalendarPage />} />
-          <Route path="learning" element={<LearningPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+          <Route path="tasks"            element={<TasksPage />} />
+          <Route path="habits"           element={<HabitsPage />} />
+          <Route path="fitness"          element={<FitnessPage />} />
+          <Route path="fitness/*"        element={<FitnessPage />} />
+          <Route path="finance"          element={<FinancePage />} />
+          <Route path="journal"          element={<JournalPage />} />
+          <Route path="goals"            element={<GoalsPage />} />
+          <Route path="calendar"         element={<CalendarPage />} />
+          <Route path="learning"         element={<LearningPage />} />
+          <Route path="settings"         element={<SettingsPage />} />
           <Route path="settings/privacy" element={<PrivacyPage />} />
           <Route path="settings/install" element={<InstallGuidePage />} />
           <Route path="settings/shortcuts" element={<ShortcutsGuidePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
+
+        {/* Fallback for unmatched top-level paths */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </HashRouter>
   );
@@ -72,7 +104,7 @@ async function checkRecurringTransactions() {
         while (next.toISOString().slice(0, 10) < today) {
           if (txn.recurringFrequency === 'daily')   next.setDate(next.getDate() + 1);
           else if (txn.recurringFrequency === 'weekly') next.setDate(next.getDate() + 7);
-          else if (txn.recurringFrequency === 'monthly') next = addMonths(next, 1); // safe month arithmetic
+          else if (txn.recurringFrequency === 'monthly') next = addMonths(next, 1);
           else if (txn.recurringFrequency === 'yearly')  next.setFullYear(next.getFullYear() + 1);
           else break;
 
@@ -105,4 +137,3 @@ async function checkRecurringTransactions() {
     console.warn('[recurring]', err);
   }
 }
-

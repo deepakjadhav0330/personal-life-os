@@ -18,6 +18,7 @@ interface ReceiptScannerProps {
   currency: string;
   onResult: (data: { amount: number; description: string; category: string }) => void;
   onClose: () => void;
+  onScanStarted?: () => void;
 }
 
 type Phase = 'idle' | 'scanning' | 'done' | 'error';
@@ -35,7 +36,7 @@ const EXPENSE_CATEGORIES = [
   { value: 'other',         label: 'Other' },
 ];
 
-export function ReceiptScanner({ currency, onResult, onClose }: ReceiptScannerProps) {
+export function ReceiptScanner({ currency, onResult, onClose, onScanStarted }: ReceiptScannerProps) {
   const [phase,       setPhase]       = useState<Phase>('idle');
   const [progress,    setProgress]    = useState(0);
   const [progressMsg, setProgressMsg] = useState('');
@@ -56,6 +57,7 @@ export function ReceiptScanner({ currency, onResult, onClose }: ReceiptScannerPr
     const url = URL.createObjectURL(file);
     setImageUrl(url);
     setPhase('scanning');
+    onScanStarted?.();
     setProgress(0);
     setProgressMsg('Loading OCR engine…');
 

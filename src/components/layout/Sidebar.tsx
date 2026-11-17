@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Dumbbell, DollarSign,
-  Flame, BookOpen, Target, CalendarDays, Settings, GraduationCap, Zap,
+  Flame, BookOpen, Target, CalendarDays, Settings, GraduationCap, Zap, ShieldCheck,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { useAuth } from '../../auth/AuthContext';
 
 // Mirrors the mobile nav logic:
 // Primary = tabs on the bottom bar  |  More = everything else
@@ -36,6 +37,7 @@ const navGroups = [
 ];
 
 export function Sidebar() {
+  const { isAdmin } = useAuth();
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-60 glass-nav border-r border-white/[0.06] flex flex-col pt-safe">
       {/* Logo */}
@@ -62,7 +64,7 @@ export function Sidebar() {
                 <NavLink
                   key={item.path}
                   to={item.path}
-                  end={(item as any).exact}
+                  end={(item as { exact?: boolean }).exact}
                   className={({ isActive }) => cn(
                     'flex items-center gap-3 px-3 py-2.5 rounded-input text-sm font-medium transition-all duration-200',
                     isActive
@@ -77,6 +79,27 @@ export function Sidebar() {
             </div>
           </div>
         ))}
+
+        {/* Admin link — only shown to the admin user */}
+        {isAdmin && (
+          <div className="mb-6">
+            <p className="text-[10px] font-semibold text-content-muted uppercase tracking-widest px-3 mb-2">
+              Admin
+            </p>
+            <NavLink
+              to="/admin"
+              className={({ isActive }) => cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-input text-sm font-medium transition-all duration-200',
+                isActive
+                  ? 'accent-gradient text-white shadow-accent-sm'
+                  : 'text-content-secondary hover:text-content-primary hover:bg-white/[0.06]',
+              )}
+            >
+              <ShieldCheck size={16} />
+              Admin Dashboard
+            </NavLink>
+          </div>
+        )}
       </div>
     </aside>
   );

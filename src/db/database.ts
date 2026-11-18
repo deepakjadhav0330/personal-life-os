@@ -62,6 +62,14 @@ class PersonalLifeOSDatabase extends Dexie {
     this.version(3).stores({
       analytics_queue: '++id, &event_key, occurred_at, user_id',
     });
+
+    // Version 4: rename analytics_queue → analyticsQueue to match the TypeScript
+    // class property. The snake_case name meant db.analyticsQueue was always
+    // undefined, crashing any code that accessed it (black screen on load).
+    this.version(4).stores({
+      analytics_queue: null,         // drop old snake_case store (temp buffer — safe to clear)
+      analyticsQueue:  '++id, &event_key, occurred_at, user_id',
+    });
   }
 }
 

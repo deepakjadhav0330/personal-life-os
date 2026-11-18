@@ -107,8 +107,7 @@ export function PendingApprovalPage() {
               <div>
                 <p className="text-base font-semibold text-success">You're approved!</p>
                 <p className="text-sm text-content-muted mt-1 leading-relaxed">
-                  Check your inbox at <span className="text-content-secondary font-medium">{reg.email}</span> for
-                  your sign-in link.
+                  Your account is ready. Tap below to sign in with a 6-digit code sent to your email.
                 </p>
               </div>
               <Button

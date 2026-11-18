@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
@@ -31,74 +31,145 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+// Profile fetch with 6-second timeout — prevents infinite loading on slow networks
+async function fetchProfileWithTimeout(userId: string): Promise<Profile | null> {
+  const timeoutMs = 6000;
+  try {
+    const result = await Promise.race([
+      supabase.from('profiles').select('*').eq('id', userId).single(),
+      new Promise<null>((_, reject) =>
+        setTimeout(() => reject(new Error('profile-timeout')), timeoutMs),
+      ),
+    ]);
+    if (!result || typeof result !== 'object' || !('data' in result)) return null;
+    return (result.data as Profile) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Provider ─────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession]   = useState<Session | null>(null);
-  const [user, setUser]         = useState<User | null>(null);
-  const [profile, setProfile]   = useState<Profile | null>(null);
+  const [session, setSession]     = useState<Session | null>(null);
+  const [user, setUser]           = useState<User | null>(null);
+  const [profile, setProfile]     = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string): Promise<void> => {
-    try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      setProfile((data as Profile) ?? null);
-    } catch {
-      setProfile(null);
-    }
-  }, []);
+  // Safety net: loading cannot be stuck for more than 10 seconds
+  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialLoadDone   = useRef(false);
 
-  const refreshProfile = useCallback(async (): Promise<void> => {
-    if (user?.id) await fetchProfile(user.id);
-  }, [user?.id, fetchProfile]);
+  function startLoadingTimeout() {
+    if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
+    loadingTimeoutRef.current = setTimeout(() => {
+      console.warn('[AuthContext] Loading timeout — forcing isLoading = false');
+      setIsLoading(false);
+    }, 10_000);
+  }
+
+  function clearLoadingTimeout() {
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+      loadingTimeoutRef.current = null;
+    }
+  }
 
   const updateLastLogin = useCallback(async (userId: string): Promise<void> => {
     try {
-      await supabase
-        .from('profiles')
-        .update({ last_login_at: new Date().toISOString() })
-        .eq('id', userId);
+      await supabase.from('profiles').update({ last_login_at: new Date().toISOString() }).eq('id', userId);
     } catch {
       // non-critical
     }
   }, []);
 
   useEffect(() => {
-    // Get the initial session on mount
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        fetchProfile(s.user.id).finally(() => setIsLoading(false));
-      } else {
-        setIsLoading(false);
-      }
-    });
+    let mounted = true;
 
-    // Subscribe to auth state changes
+    // Start safety timeout immediately
+    startLoadingTimeout();
+
+    // ── Subscribe to auth state changes ──────────────────────
+    // This fires INITIAL_SESSION synchronously (before getSession resolves),
+    // TOKEN_REFRESHED, SIGNED_IN, SIGNED_OUT, etc.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, s) => {
+        if (!mounted) return;
+
         setSession(s);
         setUser(s?.user ?? null);
+
         if (s?.user) {
-          setIsLoading(true); // keep spinner while profile loads
-          await fetchProfile(s.user.id);
           if (event === 'SIGNED_IN') {
+            // New sign-in: show spinner while profile loads to prevent flash
+            setIsLoading(true);
+            startLoadingTimeout();
+          }
+
+          const p = await fetchProfileWithTimeout(s.user.id);
+          if (!mounted) return;
+          setProfile(p);
+
+          if (event === 'SIGNED_IN') {
+            clearLoadingTimeout();
+            setIsLoading(false);
             updateLastLogin(s.user.id).catch(() => {/* non-critical */});
           }
-          setIsLoading(false);
         } else {
           setProfile(null);
-          setIsLoading(false);
+          if (!initialLoadDone.current) {
+            // No session on initial load — we can resolve
+            clearLoadingTimeout();
+            setIsLoading(false);
+            initialLoadDone.current = true;
+          }
         }
       },
     );
 
-    return () => subscription.unsubscribe();
-  }, [fetchProfile, updateLastLogin]);
+    // ── Get initial session ───────────────────────────────────
+    // This is the authoritative initial load. After it resolves,
+    // we always set isLoading = false regardless of what onAuthStateChange did.
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (!mounted) return;
+      if (initialLoadDone.current) return; // already handled by onAuthStateChange
+
+      setSession(s);
+      setUser(s?.user ?? null);
+
+      if (s?.user) {
+        fetchProfileWithTimeout(s.user.id).then(p => {
+          if (!mounted) return;
+          setProfile(p);
+          clearLoadingTimeout();
+          setIsLoading(false);
+          initialLoadDone.current = true;
+        });
+      } else {
+        clearLoadingTimeout();
+        setIsLoading(false);
+        initialLoadDone.current = true;
+      }
+    }).catch(() => {
+      if (!mounted) return;
+      clearLoadingTimeout();
+      setIsLoading(false);
+      initialLoadDone.current = true;
+    });
+
+    return () => {
+      mounted = false;
+      clearLoadingTimeout();
+      subscription.unsubscribe();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const refreshProfile = useCallback(async (): Promise<void> => {
+    if (user?.id) {
+      const p = await fetchProfileWithTimeout(user.id);
+      setProfile(p);
+    }
+  }, [user?.id]);
 
   const signOut = useCallback(async (): Promise<void> => {
     await supabase.auth.signOut();

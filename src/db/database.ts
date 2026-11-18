@@ -57,6 +57,11 @@ class PersonalLifeOSDatabase extends Dexie {
     this.version(2).stores({
       analytics_queue: '++id, &event_key, occurred_at',
     });
+
+    // Version 3: add user_id index to analytics_queue for cross-user isolation
+    this.version(3).stores({
+      analytics_queue: '++id, &event_key, occurred_at, user_id',
+    });
   }
 }
 

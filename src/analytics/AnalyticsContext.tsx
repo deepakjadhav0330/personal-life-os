@@ -12,25 +12,22 @@ const AnalyticsContext = createContext<AnalyticsContextValue | null>(null);
 interface AnalyticsProviderProps {
   children: React.ReactNode;
   accessToken: string | null;
+  userId: string | null;
 }
 
-export function AnalyticsProvider({ children, accessToken }: AnalyticsProviderProps) {
-  // Keep analytics client in sync with current access token
+export function AnalyticsProvider({ children, accessToken, userId }: AnalyticsProviderProps) {
   useEffect(() => {
-    analytics.setAccessToken(accessToken);
+    // Pass both token AND userId — analytics client uses userId to scope the queue
+    analytics.setAccessToken(accessToken, userId);
 
-    if (accessToken) {
-      // Load any events that were queued while offline
+    if (accessToken && userId) {
       analytics.loadPersistedQueue().catch(() => {/* silent */});
-      // Start or resume the session
-      sessionManager.start(accessToken).catch(() => {/* silent */});
+      sessionManager.start(accessToken, userId).catch(() => {/* silent */});
     } else {
-      // Signed out — stop session tracking
       sessionManager.stop();
     }
-  }, [accessToken]);
+  }, [accessToken, userId]);
 
-  // Flush queued events when the browser comes back online
   useEffect(() => {
     const handler = () => { analytics.flush().catch(() => {/* silent */}); };
     window.addEventListener('online', handler);

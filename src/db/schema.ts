@@ -384,10 +384,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
 // ─── ANALYTICS QUEUE (offline buffer) ────────────────────────
 // Stores events that couldn't be flushed to Supabase due to offline/error.
 // Flushed automatically when the user comes back online while authenticated.
+// IMPORTANT: user_id is stored to prevent cross-user event attribution when
+// two users share the same browser/device.
 export interface QueuedAnalyticsEvent {
   id?: number;
   event_key: string;      // UUID — used for server-side deduplication
   event_name: string;
+  user_id?: string;       // Owner of this event — prevents cross-user flush
   properties: Record<string, string | number | boolean>;
   occurred_at: string;    // ISO timestamp
   session_id?: string;

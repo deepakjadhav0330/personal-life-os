@@ -6,11 +6,13 @@ import { AuthProvider } from './auth/AuthContext.tsx';
 import { AnalyticsProvider } from './analytics/AnalyticsContext.tsx';
 import { useAuth } from './auth/AuthContext.tsx';
 
-// Inner wrapper so AnalyticsProvider can read the session from AuthContext
 function AppWithProviders() {
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   return (
-    <AnalyticsProvider accessToken={session?.access_token ?? null}>
+    <AnalyticsProvider
+      accessToken={session?.access_token ?? null}
+      userId={user?.id ?? null}
+    >
       <App />
     </AnalyticsProvider>
   );

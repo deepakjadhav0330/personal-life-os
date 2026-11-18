@@ -12,11 +12,12 @@ Deno.serve(async (req) => {
   const url    = new URL(req.url);
   const status = url.searchParams.get('status');
 
-  // ── Fetch approved / suspended users from profiles ────────
+  // ── Fetch profiles ────────────────────────────────────────
   let profileQuery = supabase
     .from('profiles')
     .select('id, full_name, email, status, registered_at, last_active_at')
-    .order('registered_at', { ascending: false });
+    .order('registered_at', { ascending: false })
+    .limit(500);
 
   if (status && status !== 'pending') {
     profileQuery = profileQuery.eq('status', status);
@@ -25,8 +26,7 @@ Deno.serve(async (req) => {
   const { data: profiles, error: profilesError } = await profileQuery;
   if (profilesError) return error('Failed to fetch users', 500);
 
-  // ── Fetch pending requests from access_requests ───────────
-  // These are users who registered but haven't been approved yet
+  // ── Fetch pending requests ────────────────────────────────
   let pendingUsers: {
     id: string; full_name: string; email: string; status: string;
     registered_at: string; last_active_at: null;
@@ -38,32 +38,42 @@ Deno.serve(async (req) => {
       .from('access_requests')
       .select('id, full_name, email, status, requested_at')
       .eq('status', 'pending')
-      .order('requested_at', { ascending: false });
+      .order('requested_at', { ascending: false })
+      .limit(500);
 
     pendingUsers = (requests ?? []).map(r => ({
-      id:             r.id,
-      full_name:      r.full_name,
-      email:          r.email,
-      status:         'pending',
-      registered_at:  r.requested_at,
-      last_active_at: null,
-      total_sessions: 0,
-      sessions_7d:    0,
+      id: r.id, full_name: r.full_name, email: r.email,
+      status: 'pending', registered_at: r.requested_at,
+      last_active_at: null, total_sessions: 0, sessions_7d: 0,
     }));
   }
 
-  // ── Enrich profile users with session counts ─────────────
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  // ── Session counts — 2 queries total instead of 2N ───────
+  // Fetch ALL session rows for the fetched profile IDs in one query,
+  // then aggregate in memory. No N+1.
+  const profileIds = (profiles ?? []).map(p => p.id);
 
-  const enriched = await Promise.all((profiles ?? []).map(async (p) => {
-    const [{ count: total }, { count: week }] = await Promise.all([
-      supabase.from('user_sessions').select('*', { count: 'exact', head: true }).eq('user_id', p.id),
-      supabase.from('user_sessions').select('*', { count: 'exact', head: true }).eq('user_id', p.id).gte('started_at', sevenDaysAgo),
+  let totalByUser = new Map<string, number>();
+  let weekByUser  = new Map<string, number>();
+
+  if (profileIds.length > 0) {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [{ data: allSessions }, { data: weekSessions }] = await Promise.all([
+      supabase.from('user_sessions').select('user_id').in('user_id', profileIds).limit(10000),
+      supabase.from('user_sessions').select('user_id').in('user_id', profileIds).gte('started_at', sevenDaysAgo).limit(10000),
     ]);
-    return { ...p, total_sessions: total ?? 0, sessions_7d: week ?? 0 };
+
+    for (const s of allSessions  ?? []) totalByUser.set(s.user_id, (totalByUser.get(s.user_id) ?? 0) + 1);
+    for (const s of weekSessions ?? []) weekByUser.set(s.user_id,  (weekByUser.get(s.user_id)  ?? 0) + 1);
+  }
+
+  const enriched = (profiles ?? []).map(p => ({
+    ...p,
+    total_sessions: totalByUser.get(p.id) ?? 0,
+    sessions_7d:    weekByUser.get(p.id)  ?? 0,
   }));
 
-  // ── Merge: pending first, then approved/suspended ─────────
   const users = status === 'pending'
     ? pendingUsers
     : status

@@ -2,7 +2,6 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
-// ─── Profile type ─────────────────────────────────────────────
 export interface Profile {
   id: string;
   full_name: string;
@@ -17,52 +16,56 @@ export interface Profile {
   has_seen_disclosure: boolean;
 }
 
-// ─── Context shape ─────────────────────────────────────────────
+type ProfileError = 'timeout' | 'not_found' | null;
+
 interface AuthContextValue {
-  session: Session | null;
-  user: User | null;
-  profile: Profile | null;
-  isAdmin: boolean;
-  isLoading: boolean;
-  isSuspended: boolean;
-  signOut: () => Promise<void>;
+  session:      Session | null;
+  user:         User    | null;
+  profile:      Profile | null;
+  isAdmin:      boolean;
+  isLoading:    boolean;
+  isSuspended:  boolean;
+  profileError: ProfileError;
+  signOut:        () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-// Profile fetch with 6-second timeout — prevents infinite loading on slow networks
-async function fetchProfileWithTimeout(userId: string): Promise<Profile | null> {
-  const timeoutMs = 6000;
+/** Fetch profile with 6s timeout. Returns the profile and the error type. */
+async function fetchProfileWithTimeout(userId: string): Promise<{ profile: Profile | null; error: ProfileError }> {
+  const TIMEOUT_MS = 6000;
   try {
-    const result = await Promise.race([
-      supabase.from('profiles').select('*').eq('id', userId).single(),
-      new Promise<null>((_, reject) =>
-        setTimeout(() => reject(new Error('profile-timeout')), timeoutMs),
-      ),
-    ]);
-    if (!result || typeof result !== 'object' || !('data' in result)) return null;
-    return (result.data as Profile) ?? null;
-  } catch {
-    return null;
+    const fetchPromise   = supabase.from('profiles').select('*').eq('id', userId).single();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS),
+    );
+
+    const result = await Promise.race([fetchPromise, timeoutPromise]);
+    return {
+      profile: (result.data as Profile) ?? null,
+      error:   result.data ? null : 'not_found',
+    };
+  } catch (e) {
+    const isTimeout = e instanceof Error && e.message === 'timeout';
+    return { profile: null, error: isTimeout ? 'timeout' : 'not_found' };
   }
 }
 
-// ─── Provider ─────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession]     = useState<Session | null>(null);
-  const [user, setUser]           = useState<User | null>(null);
-  const [profile, setProfile]     = useState<Profile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [session,      setSession]      = useState<Session | null>(null);
+  const [user,         setUser]         = useState<User    | null>(null);
+  const [profile,      setProfile]      = useState<Profile | null>(null);
+  const [isLoading,    setIsLoading]    = useState(true);
+  const [profileError, setProfileError] = useState<ProfileError>(null);
 
-  // Safety net: loading cannot be stuck for more than 10 seconds
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoadDone   = useRef(false);
 
   function startLoadingTimeout() {
     if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
     loadingTimeoutRef.current = setTimeout(() => {
-      console.warn('[AuthContext] Loading timeout — forcing isLoading = false');
+      console.warn('[AuthContext] Safety net: forcing isLoading = false after 10s');
       setIsLoading(false);
     }, 10_000);
   }
@@ -77,20 +80,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateLastLogin = useCallback(async (userId: string): Promise<void> => {
     try {
       await supabase.from('profiles').update({ last_login_at: new Date().toISOString() }).eq('id', userId);
-    } catch {
-      // non-critical
-    }
+    } catch { /* non-critical */ }
   }, []);
 
   useEffect(() => {
     let mounted = true;
-
-    // Start safety timeout immediately
     startLoadingTimeout();
 
-    // ── Subscribe to auth state changes ──────────────────────
-    // This fires INITIAL_SESSION synchronously (before getSession resolves),
-    // TOKEN_REFRESHED, SIGNED_IN, SIGNED_OUT, etc.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, s) => {
         if (!mounted) return;
@@ -100,14 +96,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (s?.user) {
           if (event === 'SIGNED_IN') {
-            // New sign-in: show spinner while profile loads to prevent flash
             setIsLoading(true);
+            setProfileError(null);
             startLoadingTimeout();
           }
 
-          const p = await fetchProfileWithTimeout(s.user.id);
+          const { profile: p, error: pErr } = await fetchProfileWithTimeout(s.user.id);
           if (!mounted) return;
+
           setProfile(p);
+          setProfileError(p ? null : pErr);
 
           if (event === 'SIGNED_IN') {
             clearLoadingTimeout();
@@ -116,8 +114,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } else {
           setProfile(null);
+          setProfileError(null);
           if (!initialLoadDone.current) {
-            // No session on initial load — we can resolve
             clearLoadingTimeout();
             setIsLoading(false);
             initialLoadDone.current = true;
@@ -126,20 +124,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     );
 
-    // ── Get initial session ───────────────────────────────────
-    // This is the authoritative initial load. After it resolves,
-    // we always set isLoading = false regardless of what onAuthStateChange did.
     supabase.auth.getSession().then(({ data: { session: s } }) => {
-      if (!mounted) return;
-      if (initialLoadDone.current) return; // already handled by onAuthStateChange
+      if (!mounted || initialLoadDone.current) return;
 
       setSession(s);
       setUser(s?.user ?? null);
 
       if (s?.user) {
-        fetchProfileWithTimeout(s.user.id).then(p => {
+        fetchProfileWithTimeout(s.user.id).then(({ profile: p, error: pErr }) => {
           if (!mounted) return;
           setProfile(p);
+          setProfileError(p ? null : pErr);
           clearLoadingTimeout();
           setIsLoading(false);
           initialLoadDone.current = true;
@@ -151,6 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }).catch(() => {
       if (!mounted) return;
+      setProfileError('timeout');
       clearLoadingTimeout();
       setIsLoading(false);
       initialLoadDone.current = true;
@@ -165,15 +161,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshProfile = useCallback(async (): Promise<void> => {
-    if (user?.id) {
-      const p = await fetchProfileWithTimeout(user.id);
-      setProfile(p);
-    }
+    if (!user?.id) return;
+    setProfileError(null);
+    const { profile: p, error: pErr } = await fetchProfileWithTimeout(user.id);
+    setProfile(p);
+    setProfileError(p ? null : pErr);
   }, [user?.id]);
 
   const signOut = useCallback(async (): Promise<void> => {
     await supabase.auth.signOut();
     setProfile(null);
+    setProfileError(null);
   }, []);
 
   const isAdmin     = user?.app_metadata?.['role'] === 'admin';
@@ -181,14 +179,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, user, profile, isAdmin, isLoading, isSuspended, signOut, refreshProfile }}
+      value={{ session, user, profile, isAdmin, isLoading, isSuspended, profileError, signOut, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>
   );
 }
 
-// ─── Hook ─────────────────────────────────────────────────────
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');

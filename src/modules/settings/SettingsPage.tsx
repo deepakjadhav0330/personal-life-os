@@ -6,7 +6,7 @@ import { useSetting } from '../../hooks/useSetting';
 import { db, exportAllData } from '../../db/database';
 import { validateBackupStructure } from '../../db/database';
 import { toast } from '../../stores/useToastStore';
-import { ChevronRight, Download, Upload, Shield, Smartphone, Trash2, Database, Zap } from 'lucide-react';
+import { ChevronRight, Download, Upload, Shield, Smartphone, Trash2, Database, Zap, AlertTriangle } from 'lucide-react';
 import type { DashboardWidgetConfig } from '../../db/schema';
 
 const defaultDashboardConfig: DashboardWidgetConfig[] = [
@@ -35,6 +35,14 @@ export function SettingsPage() {
   const [clearInput, setClearInput] = useState('');
   const [storageInfo, setStorageInfo] = useState<{ used: string; total: string } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [lastBackup, setLastBackup] = useState<Date | null>(() => {
+    const v = localStorage.getItem('lifeOS_last_backup');
+    return v ? new Date(v) : null;
+  });
+  const daysSinceBackup = lastBackup
+    ? Math.floor((Date.now() - lastBackup.getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const showBackupReminder = daysSinceBackup === null || daysSinceBackup >= 7;
 
   // Load storage estimate on mount
   useEffect(() => {
@@ -63,7 +71,10 @@ export function SettingsPage() {
       a.download = `lifeOS_backup_${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Backup downloaded!');
+      // Stamp last backup time so the reminder knows
+      localStorage.setItem('lifeOS_last_backup', new Date().toISOString());
+      setLastBackup(new Date());
+      toast.success('Backup downloaded! Keep this file somewhere safe.');
     } catch { toast.error('Export failed'); }
   };
 
@@ -184,9 +195,24 @@ export function SettingsPage() {
             <Button variant="secondary" leftIcon={<Download size={14} />} onClick={exportBackup} fullWidth>Export Full Backup (JSON)</Button>
             <Button variant="secondary" leftIcon={<Upload size={14} />} onClick={() => setImportOpen(true)} fullWidth>Import Backup</Button>
           </div>
-          <p className="text-xs text-warning/80 mt-3 leading-relaxed">
-            ⚠ Your data is stored locally on this device. Clearing Safari site data will permanently delete it. Export a backup regularly.
-          </p>
+          {showBackupReminder && (
+            <div className="flex items-start gap-2.5 glass-1 rounded-input px-3 py-3 mt-2 border border-warning/40">
+              <AlertTriangle size={14} className="text-warning shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-warning mb-0.5">
+                  {daysSinceBackup === null ? 'No backup found' : `Last backup ${daysSinceBackup}d ago`}
+                </p>
+                <p className="text-[11px] text-content-muted leading-relaxed">
+                  Your data lives only on this device. If you reinstall or clear Safari data, it's gone permanently. Export a backup now.
+                </p>
+              </div>
+            </div>
+          )}
+          {!showBackupReminder && (
+            <p className="text-[11px] text-content-muted mt-2">
+              ✓ Backed up {daysSinceBackup === 0 ? 'today' : `${daysSinceBackup}d ago`} — keep exporting regularly.
+            </p>
+          )}
           {importOpen && (
             <div className="mt-3">
               <input type="file" accept=".json" onChange={handleImport} className="text-sm text-content-secondary" />

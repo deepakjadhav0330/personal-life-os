@@ -24,6 +24,7 @@ import { AuthGate } from './auth/AuthGate';
 import { PendingApprovalPage } from './auth/PendingApprovalPage';
 import { OTPRequestPage } from './auth/OTPRequestPage';
 import { OTPVerificationPage } from './auth/OTPVerificationPage';
+import { SuspendedPage } from './auth/SuspendedPage';
 import { AdminGuard } from './admin/AdminGuard';
 import { AdminLayout } from './admin/AdminLayout';
 import { AdminOverviewPage } from './admin/AdminOverviewPage';
@@ -43,10 +44,11 @@ export function App() {
       <ToastContainer />
       <DeepLinkHandler />
       <Routes>
-        {/* ── Auth-only routes (outside AppLayout) ── */}
+        {/* ── Auth-only routes (outside AppLayout + AuthGate) ── */}
         <Route path="/pending"    element={<PendingApprovalPage />} />
         <Route path="/signin"     element={<OTPRequestPage />} />
         <Route path="/verify-otp" element={<OTPVerificationPage />} />
+        <Route path="/suspended"  element={<SuspendedPage />} />
 
         {/* ── Admin routes ── */}
         <Route path="/admin" element={<AuthGate><AdminGuard /></AuthGate>}>

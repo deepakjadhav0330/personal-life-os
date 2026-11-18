@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { RegistrationPage } from './RegistrationPage';
 import { PendingApprovalPage } from './PendingApprovalPage';
@@ -7,6 +8,9 @@ import { AnalyticsDisclosurePage } from './AnalyticsDisclosurePage';
 import { Spinner } from '../components/ui';
 import { useAnalytics } from '../analytics/AnalyticsContext';
 import { detectPlatform } from '../analytics/sessionManager';
+
+// Auth-only routes that should redirect to app if already signed in
+const AUTH_ROUTES = ['/signin', '/verify-otp', '/pending'];
 
 function FullScreenSpinner() {
   return (
@@ -31,6 +35,17 @@ function getPendingReg(): string | null {
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { isLoading, session, profile, user } = useAuth();
   const { track } = useAnalytics();
+  const navigate  = useNavigate();
+  const location  = useLocation();
+
+  // Redirect authenticated + approved users away from auth-only screens
+  useEffect(() => {
+    if (!isLoading && session && profile?.status === 'approved' && profile.has_seen_disclosure) {
+      if (AUTH_ROUTES.some(r => location.pathname.startsWith(r))) {
+        navigate('/', { replace: true });
+      }
+    }
+  }, [isLoading, session, profile, location.pathname, navigate]);
 
   // Fire app_opened once when the user becomes authenticated + approved
   useEffect(() => {
@@ -61,6 +76,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   // ── Suspended ──────────────────────────────────────────────
   if (profile.status === 'suspended') return <SuspendedPage />;
+
+  // ── Pending — edge case where session exists but not yet approved ──
+  if (profile.status === 'pending') return <PendingApprovalPage />;
 
   // ── First-time login — analytics disclosure ─────────────────
   if (!profile.has_seen_disclosure && !user?.app_metadata?.['role']) {

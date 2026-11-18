@@ -1,3 +1,4 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.47.10';
 import { handleCors, json, error } from '../_shared/cors.ts';
 import { getServiceClient } from '../_shared/supabase.ts';
 
@@ -20,7 +21,7 @@ Deno.serve(async (req) => {
   const isAdmin     = !!adminEmail && normalizedEmail === adminEmail;
 
   if (isAdmin) {
-    // Admin path — ensure the admin user and profile exist
+    // Admin path — ensure the admin user and profile exist before sending OTP
     const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 });
     const existing = users.find(u => u.email === normalizedEmail);
 
@@ -75,15 +76,29 @@ Deno.serve(async (req) => {
     if (profile.status === 'pending')   return error('Account is not yet approved', 403);
   }
 
-  // Send magic link via service role (reliable, uses project Site URL for redirect)
-  const { error: linkError } = await supabase.auth.admin.generateLink({
-    type: 'magiclink',
+  // Unified: send OTP via anon client for both admin and regular users
+  // This sends the configured email template (shows 6-digit code)
+  const anonClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+  );
+
+  const { error: otpError } = await anonClient.auth.signInWithOtp({
     email: normalizedEmail,
+    options: { shouldCreateUser: false },
   });
 
-  if (linkError) {
-    console.error('[request-otp] generateLink error:', linkError);
-    return error(`Failed to send sign-in link: ${linkError.message}`, 500);
+  if (otpError) {
+    // Fallback: use generateLink if signInWithOtp fails
+    console.warn('[request-otp] signInWithOtp failed, trying generateLink:', otpError.message);
+    const { error: linkError } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: normalizedEmail,
+    });
+    if (linkError) {
+      console.error('[request-otp] generateLink error:', linkError);
+      return error(`Failed to send sign-in code: ${linkError.message}`, 500);
+    }
   }
 
   return json({ success: true });

@@ -1,25 +1,25 @@
 import { useState } from 'react';
-import { Zap, BarChart3, Shield, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { BarChart3, Shield, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { GlassCard, Button } from '../components/ui';
+import { AppLogo } from '../components/ui/AppLogo';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
 export function AnalyticsDisclosurePage() {
-  const { user, refreshProfile } = useAuth();
+  const { refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState('');
 
   async function handleAccept() {
     setLoading(true);
+    setError('');
     try {
-      if (user?.id) {
-        await supabase
-          .from('profiles')
-          .update({ has_seen_disclosure: true })
-          .eq('id', user.id);
-        await refreshProfile();
-      }
+      // Uses Edge Function with service role — bypasses RLS SELECT-only restriction on profiles
+      const { error: fnError } = await supabase.functions.invoke('accept-disclosure', {});
+      if (fnError) throw fnError;
+      await refreshProfile();
     } catch {
-      // Non-critical — if this fails the page will show again on next login
+      setError('Could not save preference — please try again.');
     } finally {
       setLoading(false);
     }
@@ -31,9 +31,7 @@ export function AnalyticsDisclosurePage() {
 
         {/* Branding */}
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="w-16 h-16 rounded-2xl accent-gradient flex items-center justify-center shadow-accent-sm">
-            <Zap size={28} className="text-white" />
-          </div>
+          <AppLogo size={64} />
           <div>
             <h1 className="text-xl font-bold text-content-primary">Before You Continue</h1>
             <p className="text-sm text-content-muted mt-1">
@@ -98,6 +96,10 @@ export function AnalyticsDisclosurePage() {
             of access.
           </p>
         </GlassCard>
+
+        {error && (
+          <p className="text-xs text-danger text-center">{error}</p>
+        )}
 
         <Button
           variant="primary"

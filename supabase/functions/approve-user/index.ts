@@ -33,10 +33,10 @@ Deno.serve(async (req) => {
 
   if (!requestEmail) return error('email or userId is required', 400);
 
-  // Find the access request
+  // Find the access request (also fetch requested_at for accurate registration timestamp)
   const { data: accessReq } = await supabase
     .from('access_requests')
-    .select('id, full_name, email, status')
+    .select('id, full_name, email, status, requested_at')
     .eq('email', requestEmail)
     .maybeSingle();
 
@@ -65,8 +65,9 @@ Deno.serve(async (req) => {
     authUserId = newUser.user.id;
   }
 
-  // Upsert profile
+  // Upsert profile — use the original request timestamp as registered_at
   const now = new Date().toISOString();
+  const registeredAt = accessReq?.requested_at ?? now;
   const { error: profileError } = await supabase
     .from('profiles')
     .upsert({
@@ -74,6 +75,7 @@ Deno.serve(async (req) => {
       full_name: fullName,
       email: requestEmail,
       status: 'approved',
+      registered_at: registeredAt,
       approved_at: now,
     }, { onConflict: 'id' });
 

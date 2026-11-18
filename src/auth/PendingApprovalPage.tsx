@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { GlassCard, Button } from '../components/ui';
@@ -46,7 +46,8 @@ export function PendingApprovalPage() {
     }
   }
 
-  // Poll every 60 seconds
+  // Check immediately on mount, then every 60 seconds
+  useEffect(() => { checkStatus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useInterval(checkStatus, 60_000);
 
   function startOver() {

@@ -20,7 +20,44 @@ Deno.serve(async (req) => {
     .eq('id', userId)
     .single();
 
-  if (!profile) return error('User not found', 404);
+  // For pending users, profile doesn't exist yet — look up access_request instead
+  if (!profile) {
+    const { data: accessReq } = await supabase
+      .from('access_requests')
+      .select('id, full_name, email, status, requested_at')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (!accessReq || accessReq.status !== 'pending') {
+      return error('User not found', 404);
+    }
+
+    // Return a minimal pending-user object so the detail page renders
+    return json({
+      id:             accessReq.id,
+      full_name:      accessReq.full_name,
+      email:          accessReq.email,
+      status:         'pending',
+      registered_at:  accessReq.requested_at,
+      approved_at:    null,
+      last_login_at:  null,
+      last_active_at: null,
+      suspended_at:   null,
+      suspended_reason: null,
+      has_seen_disclosure: false,
+      total_sessions: 0,
+      sessions_7d:    0,
+      sessions_30d:   0,
+      avg_duration_seconds: 0,
+      active_days_7d:  0,
+      active_days_30d: 0,
+      total_events:    0,
+      event_summary:   [],
+      module_usage:    [],
+      daily_activity:  [],
+      sessions:        [],
+    });
+  }
 
   const thirtyDaysAgo  = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const sevenDaysAgo   = new Date(Date.now() - 7  * 24 * 60 * 60 * 1000).toISOString();

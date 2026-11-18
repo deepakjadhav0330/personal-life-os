@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { CheckCircle2, XCircle, ShieldOff, ShieldCheck, LogOut, MoreHorizontal } from 'lucide-react';
 import { Button, Modal, Textarea, GlassCard } from '../../components/ui';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../auth/AuthContext';
 import { toast } from '../../stores/useToastStore';
 import { cn } from '../../utils/cn';
@@ -16,24 +17,16 @@ interface UserActionMenuProps {
   compact?: boolean;
 }
 
+// Use supabase.functions.invoke() — automatically adds both apikey + Authorization headers
 async function callAdminFunction(
   fnName: string,
   body: Record<string, unknown>,
-  accessToken: string,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const res = await fetch(`${supabaseUrl}/functions/v1/${fnName}`, {
-      method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({})) as { error?: string };
-      return { ok: false, error: data.error ?? `Error ${res.status}` };
+    const { error } = await supabase.functions.invoke(fnName, { body });
+    if (error) {
+      const msg = (error as { message?: string }).message ?? 'Error';
+      return { ok: false, error: msg };
     }
     return { ok: true };
   } catch {
@@ -44,8 +37,7 @@ async function callAdminFunction(
 export function UserActionMenu({
   userId, email, fullName, currentStatus, onActionComplete, compact = false,
 }: UserActionMenuProps) {
-  const { session } = useAuth();
-  const token = session?.access_token ?? '';
+  const { session: _session } = useAuth(); // kept for potential future use
 
   const btnRef = useRef<HTMLButtonElement>(null);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
@@ -66,7 +58,7 @@ export function UserActionMenu({
 
   async function approveUser() {
     setLoading('approve'); setMenuOpen(false);
-    const { ok, error } = await callAdminFunction('approve-user', { userId, email, fullName }, token);
+    const { ok, error } = await callAdminFunction('approve-user', { userId, email, fullName });
     setLoading(null);
     if (ok) { toast.success('User approved — invitation email sent'); onActionComplete(); }
     else toast.error(error ?? 'Could not approve user');
@@ -74,7 +66,7 @@ export function UserActionMenu({
 
   async function rejectUser() {
     setLoading('reject'); setRejectOpen(false);
-    const { ok, error } = await callAdminFunction('reject-user', { userId, reason: rejectReason }, token);
+    const { ok, error } = await callAdminFunction('reject-user', { userId, reason: rejectReason });
     setLoading(null); setRejectReason('');
     if (ok) { toast.success('Request rejected'); onActionComplete(); }
     else toast.error(error ?? 'Could not reject request');
@@ -82,7 +74,7 @@ export function UserActionMenu({
 
   async function suspendUser() {
     setLoading('suspend'); setSuspendOpen(false);
-    const { ok, error } = await callAdminFunction('suspend-user', { userId, reason: suspendReason }, token);
+    const { ok, error } = await callAdminFunction('suspend-user', { userId, reason: suspendReason });
     setLoading(null); setSuspendReason('');
     if (ok) { toast.success('User suspended'); onActionComplete(); }
     else toast.error(error ?? 'Could not suspend user');
@@ -90,7 +82,7 @@ export function UserActionMenu({
 
   async function reactivateUser() {
     setLoading('reactivate'); setMenuOpen(false);
-    const { ok, error } = await callAdminFunction('reactivate-user', { userId }, token);
+    const { ok, error } = await callAdminFunction('reactivate-user', { userId });
     setLoading(null);
     if (ok) { toast.success('User reactivated'); onActionComplete(); }
     else toast.error(error ?? 'Could not reactivate user');
@@ -98,7 +90,7 @@ export function UserActionMenu({
 
   async function revokeSessions() {
     setLoading('revoke'); setMenuOpen(false);
-    const { ok, error } = await callAdminFunction('revoke-sessions', { userId }, token);
+    const { ok, error } = await callAdminFunction('revoke-sessions', { userId });
     setLoading(null);
     if (ok) { toast.success('All sessions revoked'); onActionComplete(); }
     else toast.error(error ?? 'Could not revoke sessions');

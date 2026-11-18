@@ -54,11 +54,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return <RegistrationPage />;
   }
 
-  // ── Session exists, but no profile ─────────────────────────
+  // ── Session exists, but no profile yet ────────────────────
   if (!profile) {
-    // Edge case: auth user exists but no profiles row — sign out cleanly
-    supabase.auth.signOut().catch(() => {/* silent */});
-    return <RegistrationPage />;
+    // Profile is still fetching — show spinner, don't sign out
+    return <FullScreenSpinner />;
   }
 
   // ── Suspended ──────────────────────────────────────────────

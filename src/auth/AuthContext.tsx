@@ -84,12 +84,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(s);
         setUser(s?.user ?? null);
         if (s?.user) {
+          setIsLoading(true); // keep spinner while profile loads
           await fetchProfile(s.user.id);
           if (event === 'SIGNED_IN') {
             updateLastLogin(s.user.id).catch(() => {/* non-critical */});
           }
+          setIsLoading(false);
         } else {
           setProfile(null);
+          setIsLoading(false);
         }
       },
     );

@@ -4,7 +4,6 @@ import { RegistrationPage } from './RegistrationPage';
 import { PendingApprovalPage } from './PendingApprovalPage';
 import { SuspendedPage } from './SuspendedPage';
 import { AnalyticsDisclosurePage } from './AnalyticsDisclosurePage';
-import { supabase } from '../lib/supabase';
 import { Spinner } from '../components/ui';
 import { useAnalytics } from '../analytics/AnalyticsContext';
 import { detectPlatform } from '../analytics/sessionManager';

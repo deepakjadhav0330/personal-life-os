@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard } from '../../components/ui';
 import { QuickAddBar } from '../../components/dashboard/QuickAddBar';
 import { NotificationCenter } from '../../components/dashboard/NotificationCenter';
+import { SampleDataBanner, useShouldShowBanner } from '../../components/dashboard/SampleDataBanner';
 import { useSmartNudges } from '../../hooks/useSmartNudges';
 import { GreetingWidget } from '../../components/widgets/GreetingWidget';
 import { DailySummaryWidget } from '../../components/widgets/DailySummaryWidget';
@@ -47,6 +48,7 @@ export function DashboardPage() {
   const quickAddText: string | undefined = location.state?.quickAdd;
   const nudges = useSmartNudges();
   const activeNudgeCount = nudges.length;
+  const showBanner = useShouldShowBanner();
 
   // Clear the state so it doesn't persist on subsequent renders
   useEffect(() => {
@@ -80,6 +82,8 @@ export function DashboardPage() {
         ) : (
           <>
             <QuickAddBar initialValue={quickAddText} />
+            {/* Show one-time sample data banner until user dismisses it */}
+            {showBanner && hasData === true && <SampleDataBanner />}
             {visibleWidgets.map(widget => {
               const Widget = widgetMap[widget.widgetId];
               if (!Widget) return null;

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { App } from './App.tsx';
 import './index.css';
 import { AuthProvider } from './auth/AuthContext.tsx';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { AnalyticsProvider } from './analytics/AnalyticsContext.tsx';
 import { useAuth } from './auth/AuthContext.tsx';
 
@@ -53,8 +54,10 @@ function AppWithProviders() {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <AuthProvider>
-      <AppWithProviders />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppWithProviders />
+      </AuthProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 );

@@ -132,25 +132,44 @@ export function SettingsPage() {
 
   const shareApp = async () => {
     const appUrl = import.meta.env.VITE_APP_URL ?? 'https://life-os.deepak-jadhav0330.workers.dev';
-    const message = `Hey! 👋 I want to invite you to Life OS — a private productivity app I use daily.
+    const message = `Hey! 👋 I'd like to invite you to Life OS — a private productivity app I use daily.
 
-What it does:
+What you get:
 ✓ Tasks & reminders
 ✓ Habit tracking with streaks
 ✓ Fitness & nutrition logging
-✓ Finance & budget tracking
+✓ Finance & budgets
 ✓ Journal & goals
 ✓ Calendar & learning tracker
-✓ Works offline on your phone
+✓ Works fully offline
+✓ Your data stays only on your device
 
-Your data stays only on your device — nothing is shared with anyone.
+─── How to get access ───
 
-It's invite-only, so here's how to get access:
-1. Open the app: ${appUrl}
-2. Enter your name & email to request access
-3. I'll approve your request and you'll get a sign-in link by email
+Life OS is invite-only. Here's how the onboarding works:
 
-Tap here to get started 👉 ${appUrl}`;
+① Request access
+   Open ${appUrl}
+   Enter your name & email → tap "Request Access"
+
+② Wait for admin approval
+   The admin reviews new requests manually.
+   You'll receive an email once you're approved
+   (check your spam folder too).
+
+③ Sign in with a 6-digit code
+   After approval, open the app and tap "Already approved? Sign in"
+   Enter your email → you'll get a 6-digit code by email
+   Type it in the app to sign in — no password needed.
+
+④ Install on iPhone (highly recommended)
+   In Safari, tap the Share button (□↑) at the bottom
+   → "Add to Home Screen" → Add
+   Life OS works as a full app on your home screen,
+   even without an internet connection.
+
+Ready to join? Open the link below 👇
+${appUrl}`;
 
     if (navigator.share) {
       try {

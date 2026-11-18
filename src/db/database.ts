@@ -67,6 +67,20 @@ class PersonalLifeOSDatabase extends Dexie {
 
 export const db = new PersonalLifeOSDatabase();
 
+// When another tab upgrades the database, release our connection so they're
+// not blocked. The page reloads automatically and opens the new version.
+db.on('versionchange', () => {
+  db.close();
+  window.location.reload();
+});
+
+// If this tab is trying to upgrade but another tab is blocking it,
+// wait 1.5 s for the other tab to close its connection then reload.
+db.on('blocked', () => {
+  console.warn('[DB] Upgrade blocked by another tab — reloading in 1.5s');
+  setTimeout(() => window.location.reload(), 1500);
+});
+
 // ─── Convenience helpers ──────────────────────────────────────
 export async function getSetting<T>(key: string, defaultValue: T): Promise<T> {
   const row = await db.settings.where('key').equals(key).first();

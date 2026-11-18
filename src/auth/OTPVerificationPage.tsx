@@ -83,9 +83,12 @@ export function OTPVerificationPage() {
         return;
       }
 
-      // Session established — AuthGate handles navigation
+      // Navigate to '/' so AuthGate renders and routes correctly.
+      // AuthGate is NOT active at /#/verify-otp — without this navigate
+      // the user stays on the blank OTP page after verification.
       sessionStorage.removeItem('lifeOS_otp_email');
       localStorage.removeItem('lifeOS_pending_registration');
+      navigate('/', { replace: true });
     } catch {
       setError('Something went wrong — please try again.');
     } finally {

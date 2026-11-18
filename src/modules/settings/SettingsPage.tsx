@@ -6,7 +6,7 @@ import { useSetting } from '../../hooks/useSetting';
 import { db, exportAllData } from '../../db/database';
 import { validateBackupStructure } from '../../db/database';
 import { toast } from '../../stores/useToastStore';
-import { ChevronRight, Download, Upload, Shield, Smartphone, Trash2, Database, Zap, AlertTriangle, Share2 } from 'lucide-react';
+import { ChevronRight, Download, Upload, Shield, Smartphone, Trash2, Database, Zap, AlertTriangle, Share2, Copy, MessageSquare } from 'lucide-react';
 import type { DashboardWidgetConfig } from '../../db/schema';
 
 const defaultDashboardConfig: DashboardWidgetConfig[] = [
@@ -292,6 +292,7 @@ ${appUrl}`;
             <SettingLink icon={<Shield size={16} />} label="Privacy Information" onClick={() => navigate('/settings/privacy')} />
             <SettingLink icon={<Smartphone size={16} />} label="Install on iPhone" onClick={() => navigate('/settings/install')} />
             <SettingLink icon={<Zap size={16} />} label="iOS Shortcuts" onClick={() => navigate('/settings/shortcuts')} />
+            <SettingLink icon={<MessageSquare size={16} />} label="Send Feedback" onClick={() => navigate('/settings/feedback')} />
           </div>
         </SettingSection>
 

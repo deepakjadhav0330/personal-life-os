@@ -1,12 +1,13 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { ShieldCheck, LayoutDashboard, Users, TrendingUp, ArrowLeft, LogOut } from 'lucide-react';
+import { ShieldCheck, LayoutDashboard, Users, TrendingUp, ArrowLeft, LogOut, MessageSquare } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { useAuth } from '../auth/AuthContext';
 
 const adminNav = [
-  { path: '/admin',         label: 'Overview',  icon: LayoutDashboard, exact: true },
-  { path: '/admin/users',   label: 'Users',     icon: Users },
-  { path: '/admin/product', label: 'Product',   icon: TrendingUp },
+  { path: '/admin',          label: 'Overview',  icon: LayoutDashboard, exact: true },
+  { path: '/admin/users',    label: 'Users',     icon: Users },
+  { path: '/admin/product',  label: 'Product',   icon: TrendingUp },
+  { path: '/admin/feedback', label: 'Feedback',  icon: MessageSquare },
 ];
 
 export function AdminLayout() {

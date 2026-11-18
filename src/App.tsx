@@ -18,6 +18,7 @@ import { SettingsPage } from './modules/settings/SettingsPage';
 import { PrivacyPage } from './modules/settings/PrivacyPage';
 import { InstallGuidePage } from './modules/settings/InstallGuidePage';
 import { ShortcutsGuidePage } from './modules/settings/ShortcutsGuidePage';
+import { FeedbackPage } from './modules/settings/FeedbackPage';
 import { seedDatabase } from './db/seeds';
 import { db } from './db/database';
 import { AuthGate } from './auth/AuthGate';
@@ -31,6 +32,7 @@ import { AdminOverviewPage } from './admin/AdminOverviewPage';
 import { AdminUsersPage } from './admin/AdminUsersPage';
 import { AdminUserDetailPage } from './admin/AdminUserDetailPage';
 import { AdminProductPage } from './admin/AdminProductPage';
+import { AdminFeedbackPage } from './admin/AdminFeedbackPage';
 
 export function App() {
   useEffect(() => {
@@ -57,6 +59,7 @@ export function App() {
             <Route path="users"   element={<AdminUsersPage />} />
             <Route path="users/:userId" element={<AdminUserDetailPage />} />
             <Route path="product" element={<AdminProductPage />} />
+            <Route path="feedback" element={<AdminFeedbackPage />} />
           </Route>
         </Route>
 
@@ -80,6 +83,7 @@ export function App() {
           <Route path="settings/privacy" element={<PrivacyPage />} />
           <Route path="settings/install" element={<InstallGuidePage />} />
           <Route path="settings/shortcuts" element={<ShortcutsGuidePage />} />
+          <Route path="settings/feedback" element={<FeedbackPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
 

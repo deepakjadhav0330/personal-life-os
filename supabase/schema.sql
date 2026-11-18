@@ -120,3 +120,30 @@ RETURNS INTEGER AS $$
     AND occurred_at >= p_since
     AND event_name = 'module_opened';
 $$ LANGUAGE SQL STABLE SECURITY DEFINER;
+
+-- ── 6. feedback ───────────────────────────────────────────────
+-- In-app feedback submitted by users. Admin can read all; users
+-- can only insert their own (via Edge Function with service role).
+CREATE TABLE IF NOT EXISTS feedback (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_name   TEXT,
+  user_email  TEXT,
+  category    TEXT NOT NULL DEFAULT 'general'
+              CHECK (category IN ('bug', 'suggestion', 'general', 'praise')),
+  rating      INTEGER CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5)),
+  message     TEXT NOT NULL CHECK (char_length(message) >= 5 AND char_length(message) <= 2000),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_user_id    ON feedback(user_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_feedback_category   ON feedback(category);
+
+ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+
+-- Only admin can read feedback
+CREATE POLICY "admin_read_feedback" ON feedback FOR SELECT USING (
+  (auth.jwt()->'app_metadata'->>'role') = 'admin'
+);
+-- Inserts go through Edge Function (service role) — no direct client insert

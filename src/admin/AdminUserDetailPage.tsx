@@ -126,6 +126,10 @@ export function AdminUserDetailPage() {
             </div>
             <p className="text-sm text-content-muted">{user.email}</p>
           </div>
+        </div>
+
+        {/* Action buttons in their own row — prevents overlap with username */}
+        <div className="mt-3 pt-3 border-t border-white/[0.06]">
           <UserActionMenu
             userId={user.id}
             email={user.email}

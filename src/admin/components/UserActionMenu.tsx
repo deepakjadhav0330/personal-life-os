@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { CheckCircle2, XCircle, ShieldOff, ShieldCheck, LogOut, MoreHorizontal } from 'lucide-react';
 import { Button, Modal, Textarea, GlassCard } from '../../components/ui';
 import { useAuth } from '../../auth/AuthContext';
@@ -13,7 +13,7 @@ interface UserActionMenuProps {
   fullName: string;
   currentStatus: UserStatus;
   onActionComplete: () => void;
-  compact?: boolean; // show as dropdown vs. inline buttons
+  compact?: boolean;
 }
 
 async function callAdminFunction(
@@ -47,16 +47,25 @@ export function UserActionMenu({
   const { session } = useAuth();
   const token = session?.access_token ?? '';
 
-  const [menuOpen, setMenuOpen]         = useState(false);
-  const [rejectOpen, setRejectOpen]     = useState(false);
-  const [suspendOpen, setSuspendOpen]   = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+  const [menuOpen, setMenuOpen]           = useState(false);
+  const [rejectOpen, setRejectOpen]       = useState(false);
+  const [suspendOpen, setSuspendOpen]     = useState(false);
+  const [rejectReason, setRejectReason]   = useState('');
   const [suspendReason, setSuspendReason] = useState('');
-  const [loading, setLoading]           = useState<string | null>(null);
+  const [loading, setLoading]             = useState<string | null>(null);
+
+  function openMenu() {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setMenuOpen(true);
+  }
 
   async function approveUser() {
-    setLoading('approve');
-    setMenuOpen(false);
+    setLoading('approve'); setMenuOpen(false);
     const { ok, error } = await callAdminFunction('approve-user', { userId, email, fullName }, token);
     setLoading(null);
     if (ok) { toast.success('User approved — invitation email sent'); onActionComplete(); }
@@ -64,28 +73,23 @@ export function UserActionMenu({
   }
 
   async function rejectUser() {
-    setLoading('reject');
-    setRejectOpen(false);
+    setLoading('reject'); setRejectOpen(false);
     const { ok, error } = await callAdminFunction('reject-user', { userId, reason: rejectReason }, token);
-    setLoading(null);
-    setRejectReason('');
+    setLoading(null); setRejectReason('');
     if (ok) { toast.success('Request rejected'); onActionComplete(); }
     else toast.error(error ?? 'Could not reject request');
   }
 
   async function suspendUser() {
-    setLoading('suspend');
-    setSuspendOpen(false);
+    setLoading('suspend'); setSuspendOpen(false);
     const { ok, error } = await callAdminFunction('suspend-user', { userId, reason: suspendReason }, token);
-    setLoading(null);
-    setSuspendReason('');
+    setLoading(null); setSuspendReason('');
     if (ok) { toast.success('User suspended'); onActionComplete(); }
     else toast.error(error ?? 'Could not suspend user');
   }
 
   async function reactivateUser() {
-    setLoading('reactivate');
-    setMenuOpen(false);
+    setLoading('reactivate'); setMenuOpen(false);
     const { ok, error } = await callAdminFunction('reactivate-user', { userId }, token);
     setLoading(null);
     if (ok) { toast.success('User reactivated'); onActionComplete(); }
@@ -93,8 +97,7 @@ export function UserActionMenu({
   }
 
   async function revokeSessions() {
-    setLoading('revoke');
-    setMenuOpen(false);
+    setLoading('revoke'); setMenuOpen(false);
     const { ok, error } = await callAdminFunction('revoke-sessions', { userId }, token);
     setLoading(null);
     if (ok) { toast.success('All sessions revoked'); onActionComplete(); }
@@ -105,9 +108,10 @@ export function UserActionMenu({
 
   if (compact) {
     return (
-      <div className="relative">
+      <div>
         <button
-          onClick={() => setMenuOpen(!menuOpen)}
+          ref={btnRef}
+          onClick={openMenu}
           className="p-1.5 glass-1 rounded-lg text-content-muted hover:text-content-primary transition-colors"
           disabled={isLoading}
         >
@@ -117,7 +121,10 @@ export function UserActionMenu({
         {menuOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-            <div className="absolute right-0 top-8 z-50 w-44 glass-elevated rounded-card border border-white/[0.1] shadow-glass overflow-hidden">
+            <div
+              className="z-50 w-44 glass-elevated rounded-card border border-white/[0.1] shadow-glass overflow-hidden"
+              style={{ position: 'fixed', top: menuPos.top, right: menuPos.right }}
+            >
               {currentStatus === 'pending' && (
                 <>
                   <ActionItem icon={<CheckCircle2 size={13} className="text-success" />} label="Approve" onClick={approveUser} />
@@ -137,17 +144,10 @@ export function UserActionMenu({
           </>
         )}
 
-        {/* Reject modal */}
         <Modal open={rejectOpen} onClose={() => setRejectOpen(false)} title="Reject Request">
           <div className="flex flex-col gap-4">
             <p className="text-sm text-content-secondary">Rejecting access request for <strong className="text-content-primary">{email}</strong></p>
-            <Textarea
-              label="Reason (optional)"
-              value={rejectReason}
-              onChange={e => setRejectReason(e.target.value)}
-              placeholder="Enter a reason…"
-              rows={3}
-            />
+            <Textarea label="Reason (optional)" value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="Enter a reason…" rows={3} />
             <div className="flex gap-2">
               <Button variant="ghost" fullWidth onClick={() => setRejectOpen(false)}>Cancel</Button>
               <Button variant="danger" fullWidth loading={loading === 'reject'} onClick={rejectUser}>Reject Request</Button>
@@ -155,20 +155,13 @@ export function UserActionMenu({
           </div>
         </Modal>
 
-        {/* Suspend modal */}
         <Modal open={suspendOpen} onClose={() => setSuspendOpen(false)} title="Suspend User">
           <div className="flex flex-col gap-4">
             <GlassCard className="border-warning/30">
               <p className="text-sm text-warning font-medium mb-1">This will immediately sign the user out of all active sessions.</p>
               <p className="text-xs text-content-muted">Suspending <strong className="text-content-secondary">{fullName}</strong> ({email})</p>
             </GlassCard>
-            <Textarea
-              label="Reason (optional)"
-              value={suspendReason}
-              onChange={e => setSuspendReason(e.target.value)}
-              placeholder="Enter a reason…"
-              rows={3}
-            />
+            <Textarea label="Reason (optional)" value={suspendReason} onChange={e => setSuspendReason(e.target.value)} placeholder="Enter a reason…" rows={3} />
             <div className="flex gap-2">
               <Button variant="ghost" fullWidth onClick={() => setSuspendOpen(false)}>Cancel</Button>
               <Button variant="danger" fullWidth loading={loading === 'suspend'} onClick={suspendUser}>Suspend User</Button>
@@ -179,19 +172,18 @@ export function UserActionMenu({
     );
   }
 
-  // Inline buttons (for detail page)
   return (
     <div className="flex flex-wrap gap-2">
       {currentStatus === 'pending' && (
         <>
           <Button size="sm" variant="success" leftIcon={<CheckCircle2 size={13} />} loading={loading === 'approve'} onClick={approveUser} disabled={isLoading}>Approve</Button>
-          <Button size="sm" variant="danger"  leftIcon={<XCircle size={13} />}      loading={loading === 'reject'}  onClick={() => setRejectOpen(true)}  disabled={isLoading}>Reject</Button>
+          <Button size="sm" variant="danger"  leftIcon={<XCircle size={13} />}      loading={loading === 'reject'}  onClick={() => setRejectOpen(true)} disabled={isLoading}>Reject</Button>
         </>
       )}
       {currentStatus === 'approved' && (
         <>
-          <Button size="sm" variant="ghost"   leftIcon={<ShieldOff size={13} className="text-warning" />} loading={loading === 'suspend'}  onClick={() => setSuspendOpen(true)} disabled={isLoading} className="text-warning">Suspend</Button>
-          <Button size="sm" variant="ghost"   leftIcon={<LogOut size={13} />}                              loading={loading === 'revoke'}   onClick={revokeSessions}            disabled={isLoading}>Revoke Sessions</Button>
+          <Button size="sm" variant="ghost" leftIcon={<ShieldOff size={13} className="text-warning" />} loading={loading === 'suspend'}  onClick={() => setSuspendOpen(true)} disabled={isLoading} className="text-warning">Suspend</Button>
+          <Button size="sm" variant="ghost" leftIcon={<LogOut size={13} />}                              loading={loading === 'revoke'}   onClick={revokeSessions}            disabled={isLoading}>Revoke Sessions</Button>
         </>
       )}
       {currentStatus === 'suspended' && (
@@ -200,7 +192,7 @@ export function UserActionMenu({
 
       <Modal open={rejectOpen} onClose={() => setRejectOpen(false)} title="Reject Request">
         <div className="flex flex-col gap-4">
-          <p className="text-sm text-content-secondary">Rejecting access request for <strong className="text-content-primary">{email}</strong></p>
+          <p className="text-sm text-content-secondary">Rejecting for <strong className="text-content-primary">{email}</strong></p>
           <Textarea label="Reason (optional)" value={rejectReason} onChange={e => setRejectReason(e.target.value)} placeholder="Enter a reason…" rows={3} />
           <div className="flex gap-2">
             <Button variant="ghost" fullWidth onClick={() => setRejectOpen(false)}>Cancel</Button>

@@ -1,0 +1,74 @@
+name: Run SQL Migration
+
+on:
+  workflow_dispatch: # manual trigger only
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create feedback table and policies
+        env:
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          python3 << 'PYEOF'
+          import urllib.request, urllib.error, json, os
+
+          project = os.environ['SUPABASE_PROJECT_ID']
+          token   = os.environ['SUPABASE_ACCESS_TOKEN']
+
+          sql = """
+          CREATE TABLE IF NOT EXISTS feedback (
+            id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id     UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+            user_name   TEXT,
+            user_email  TEXT,
+            category    TEXT NOT NULL DEFAULT 'general'
+                        CHECK (category IN ('bug', 'suggestion', 'general', 'praise')),
+            rating      INTEGER CHECK (rating IS NULL OR (rating >= 1 AND rating <= 5)),
+            message     TEXT NOT NULL CHECK (char_length(message) >= 5 AND char_length(message) <= 2000),
+            created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+          );
+
+          CREATE INDEX IF NOT EXISTS idx_feedback_user_id    ON feedback(user_id);
+          CREATE INDEX IF NOT EXISTS idx_feedback_created_at ON feedback(created_at DESC);
+          CREATE INDEX IF NOT EXISTS idx_feedback_category   ON feedback(category);
+
+          ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_policies
+              WHERE tablename = 'feedback' AND policyname = 'admin_read_feedback'
+            ) THEN
+              CREATE POLICY admin_read_feedback ON feedback FOR SELECT USING (
+                (auth.jwt()->'app_metadata'->>'role') = 'admin'
+              );
+            END IF;
+          END $$;
+          """
+
+          url  = f'https://api.supabase.com/v1/projects/{project}/database/query'
+          data = json.dumps({'query': sql}).encode()
+          req  = urllib.request.Request(
+            url,
+            data=data,
+            headers={
+              'Authorization': f'Bearer {token}',
+              'Content-Type':  'application/json',
+            },
+            method='POST',
+          )
+
+          try:
+            with urllib.request.urlopen(req) as resp:
+              body = resp.read().decode()
+              print(f'HTTP {resp.status}: {body}')
+              print('Migration succeeded!')
+          except urllib.error.HTTPError as e:
+            body = e.read().decode()
+            print(f'HTTP {e.code}: {body}')
+            raise SystemExit(1)
+          PYEOF

@@ -6,7 +6,7 @@ import { useSetting } from '../../hooks/useSetting';
 import { db, exportAllData } from '../../db/database';
 import { validateBackupStructure } from '../../db/database';
 import { toast } from '../../stores/useToastStore';
-import { ChevronRight, Download, Upload, Shield, Smartphone, Trash2, Database, Zap, AlertTriangle } from 'lucide-react';
+import { ChevronRight, Download, Upload, Shield, Smartphone, Trash2, Database, Zap, AlertTriangle, Share2 } from 'lucide-react';
 import type { DashboardWidgetConfig } from '../../db/schema';
 
 const defaultDashboardConfig: DashboardWidgetConfig[] = [
@@ -130,6 +130,52 @@ export function SettingsPage() {
     }
   };
 
+  const shareApp = async () => {
+    const appUrl = import.meta.env.VITE_APP_URL ?? 'https://life-os.deepak-jadhav0330.workers.dev';
+    const message = `Hey! 👋 I want to invite you to Life OS — a private productivity app I use daily.
+
+What it does:
+✓ Tasks & reminders
+✓ Habit tracking with streaks
+✓ Fitness & nutrition logging
+✓ Finance & budget tracking
+✓ Journal & goals
+✓ Calendar & learning tracker
+✓ Works offline on your phone
+
+Your data stays only on your device — nothing is shared with anyone.
+
+It's invite-only, so here's how to get access:
+1. Open the app: ${appUrl}
+2. Enter your name & email to request access
+3. I'll approve your request and you'll get a sign-in link by email
+
+Tap here to get started 👉 ${appUrl}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Life OS — Personal Command Centre',
+          text: message,
+          url: appUrl,
+        });
+      } catch (err) {
+        // User cancelled or share failed — do nothing
+        if (err instanceof Error && err.name !== 'AbortError') {
+          toast.error('Could not share — try copying the link instead');
+        }
+      }
+    } else {
+      // Fallback: copy the message to clipboard
+      try {
+        await navigator.clipboard.writeText(message);
+        toast.success('Invite message copied to clipboard!');
+      } catch {
+        toast.error('Could not copy — please share the link manually');
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen-dvh">
       <PageHeader title="Settings" />
@@ -223,6 +269,7 @@ export function SettingsPage() {
         {/* Privacy & Install */}
         <SettingSection title="More">
           <div className="flex flex-col gap-1">
+            <SettingLink icon={<Share2 size={16} />} label="Share App & Invite Friends" onClick={shareApp} />
             <SettingLink icon={<Shield size={16} />} label="Privacy Information" onClick={() => navigate('/settings/privacy')} />
             <SettingLink icon={<Smartphone size={16} />} label="Install on iPhone" onClick={() => navigate('/settings/install')} />
             <SettingLink icon={<Zap size={16} />} label="iOS Shortcuts" onClick={() => navigate('/settings/shortcuts')} />

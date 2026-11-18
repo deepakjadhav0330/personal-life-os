@@ -21,11 +21,33 @@ Deno.serve(async (req) => {
   const isAdmin     = !!adminEmail && normalizedEmail === adminEmail;
 
   if (isAdmin) {
-    // Admin path — ensure the admin user and profile exist before sending OTP
-    const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-    const existing = users.find(u => u.email === normalizedEmail);
+    // Admin path — look up user by email via profiles table first (O(1), no page-size limit),
+    // then fall back to auth.admin if profile doesn't exist yet.
+    const { data: adminProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', normalizedEmail)
+      .maybeSingle();
 
-    if (!existing) {
+    let existingUserId: string | null = adminProfile?.id ?? null;
+
+    if (!existingUserId) {
+      // No profile yet — try to find in auth.users by listing (first-ever admin sign-in only)
+      // Use page-based search to avoid perPage: 1000 truncation
+      let found = null;
+      let page  = 1;
+      while (!found) {
+        const { data: { users }, error: listErr } = await supabase.auth.admin.listUsers({ page, perPage: 50 });
+        if (listErr || users.length === 0) break;
+        found = users.find(u => u.email === normalizedEmail) ?? null;
+        if (found) break;
+        if (users.length < 50) break; // last page
+        page++;
+      }
+      existingUserId = found?.id ?? null;
+    }
+
+    if (!existingUserId) {
       // First-ever admin sign-in — create auth user
       const { data: created, error: createErr } = await supabase.auth.admin.createUser({
         email: normalizedEmail,
@@ -38,8 +60,9 @@ Deno.serve(async (req) => {
         return error(`Could not create admin account: ${createErr.message}`, 500);
       }
       if (created?.user) {
+        existingUserId = created.user.id;
         await supabase.from('profiles').upsert({
-          id: created.user.id,
+          id: existingUserId,
           full_name: 'Administrator',
           email: normalizedEmail,
           status: 'approved',
@@ -49,17 +72,14 @@ Deno.serve(async (req) => {
       }
     } else {
       // Ensure admin role and profile are set
-      if (existing.app_metadata?.role !== 'admin') {
-        await supabase.auth.admin.updateUserById(existing.id, {
-          app_metadata: { role: 'admin' },
-        });
-      }
+      await supabase.auth.admin.updateUserById(existingUserId, {
+        app_metadata: { role: 'admin' },
+      });
       await supabase.from('profiles').upsert({
-        id: existing.id,
-        full_name: existing.user_metadata?.full_name ?? 'Administrator',
+        id: existingUserId,
+        full_name: 'Administrator',
         email: normalizedEmail,
         status: 'approved',
-        approved_at: existing.created_at,
         has_seen_disclosure: true,
       }, { onConflict: 'id' });
     }

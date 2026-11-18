@@ -30,27 +30,26 @@ class AnalyticsClient {
 
   /**
    * Update the access token and authenticated user.
-   * When the user changes (logout / account switch), clears all
-   * in-memory and persisted events that belong to the previous user.
+   * When the user changes (logout / account switch):
+   *   - In-memory queue is cleared (events only flushed for the active user)
+   *   - Persisted events for PREVIOUS user are kept in IndexedDB, keyed to
+   *     their userId — they will flush when that user signs back in.
+   *   - Only legacy orphaned events (no user_id) are pruned.
    */
   setAccessToken(token: string | null, userId?: string | null): void {
     const userChanged = userId !== undefined && userId !== this.userId;
 
     if (userChanged) {
-      // Drop in-memory events from previous user
+      // Drop in-memory events only — do NOT delete persisted events for the
+      // previous user. They stay in IndexedDB keyed to their user_id and will
+      // flush when that user authenticates again.
       this.queue = [];
       if (this.flushTimer) {
         clearTimeout(this.flushTimer);
         this.flushTimer = null;
       }
-      // Purge previous user's persisted events from IndexedDB
-      if (this.userId) {
-        db.analyticsQueue
-          .where('user_id').equals(this.userId)
-          .delete()
-          .catch(() => {/* silent */});
-      }
-      // Also purge legacy events with no user_id (from before this fix)
+      // Only purge legacy orphaned events that have no user_id attribution
+      // (created before the user-scoping fix was deployed).
       db.analyticsQueue
         .filter(e => !e.user_id)
         .delete()
@@ -135,12 +134,11 @@ class AnalyticsClient {
 
   /**
    * Load persisted events for the CURRENT user only.
-   * Events from other users are ignored and cleaned up.
+   * Other users' events stay in the queue — they flush when that user logs in.
    */
   async loadPersistedQueue(): Promise<void> {
     if (!this.userId) return;
     try {
-      // Only load events that belong to the current user
       const myEvents = await db.analyticsQueue
         .where('user_id')
         .equals(this.userId)
@@ -151,9 +149,9 @@ class AnalyticsClient {
         this.scheduleFlush();
       }
 
-      // Clean up orphaned events (no user_id or different user)
+      // Only prune orphaned legacy events (no user_id) — never touch other users'
       await db.analyticsQueue
-        .filter(e => !e.user_id || e.user_id !== this.userId)
+        .filter(e => !e.user_id)
         .delete();
     } catch {
       // Silently ignore

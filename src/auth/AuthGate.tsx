@@ -5,7 +5,6 @@ import { useAuth } from './AuthContext';
 import { RegistrationPage } from './RegistrationPage';
 import { PendingApprovalPage } from './PendingApprovalPage';
 import { SuspendedPage } from './SuspendedPage';
-import { AnalyticsDisclosurePage } from './AnalyticsDisclosurePage';
 import { Spinner, Button, GlassCard } from '../components/ui';
 import { useAnalytics } from '../analytics/AnalyticsContext';
 import { detectPlatform } from '../analytics/sessionManager';
@@ -70,14 +69,14 @@ function getPendingReg(): string | null {
 }
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { isLoading, session, profile, user, profileError, signOut, refreshProfile } = useAuth();
+  const { isLoading, session, profile, profileError, signOut, refreshProfile } = useAuth();
   const { track } = useAnalytics();
   const navigate  = useNavigate();
   const location  = useLocation();
 
   // Redirect authenticated + approved users away from auth-only screens
   useEffect(() => {
-    if (!isLoading && session && profile?.status === 'approved' && profile.has_seen_disclosure) {
+    if (!isLoading && session && profile?.status === 'approved') {
       if (AUTH_ROUTES.some(r => location.pathname.startsWith(r))) {
         navigate('/', { replace: true });
       }
@@ -121,9 +120,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   if (profile.status === 'suspended') return <SuspendedPage />;
   if (profile.status === 'pending')   return <PendingApprovalPage />;
 
-  if (!profile.has_seen_disclosure && !user?.app_metadata?.['role']) {
-    return <AnalyticsDisclosurePage />;
-  }
-
+  // Analytics disclosure is in Settings → Privacy (not a gate).
+  // Approved users access the app immediately after sign-in.
   return <>{children}</>;
 }

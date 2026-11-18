@@ -44,15 +44,35 @@ Deno.serve(async (req) => {
     fullName = accessReq.full_name ?? fullName;
   }
 
-  // Check if auth user already exists
+  // Check if auth user already exists — look up via profiles table first (O(1)),
+  // then page through auth.users only if profile lookup fails.
   let authUserId: string | undefined;
-  const { data: { users } } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-  const existing = users.find(u => u.email === requestEmail);
 
-  if (existing) {
-    authUserId = existing.id;
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', requestEmail)
+    .maybeSingle();
+
+  if (existingProfile?.id) {
+    authUserId = existingProfile.id;
   } else {
-    // Create Supabase Auth user
+    // Profile not found — search auth.users with pagination to avoid perPage:1000 limit
+    let found = null;
+    let page  = 1;
+    while (!found) {
+      const { data: { users }, error: listErr } = await supabase.auth.admin.listUsers({ page, perPage: 50 });
+      if (listErr || users.length === 0) break;
+      found = users.find(u => u.email === requestEmail) ?? null;
+      if (found) break;
+      if (users.length < 50) break;
+      page++;
+    }
+    authUserId = found?.id;
+  }
+
+  if (!authUserId) {
+    // Not found anywhere — create new auth user
     const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
       email: requestEmail,
       email_confirm: true,

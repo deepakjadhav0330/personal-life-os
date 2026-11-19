@@ -135,8 +135,13 @@ export function AdminUsersPage() {
       ) : (
         <div className="flex flex-col gap-2">
           {filtered.map(user => (
-            <GlassCard key={user.id} padding="sm" className="hover:glass-2 transition-all cursor-pointer" onClick={() => navigate(`/admin/users/${user.id}`)}>
+            <GlassCard key={user.id} padding="sm" className="transition-all">
               <div className="flex items-center gap-3">
+                {/* Left side: tappable area that navigates — separate from action buttons */}
+                <button
+                  className="flex items-center gap-3 flex-1 min-w-0 text-left hover:opacity-80 transition-opacity"
+                  onClick={() => navigate(`/admin/users/${user.id}`)}
+                >
                 {/* Avatar */}
                 <div className="w-9 h-9 rounded-full accent-gradient flex items-center justify-center shrink-0">
                   <span className="text-sm font-bold text-white">{user.full_name.charAt(0).toUpperCase()}</span>
@@ -163,9 +168,10 @@ export function AdminUsersPage() {
                     <span className="text-[10px] text-content-dim">{user.sessions_7d} sessions (7d)</span>
                   </div>
                 </div>
+                </button> {/* end navigation button */}
 
-                {/* Actions */}
-                <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                {/* Actions — sibling to nav button, NOT a child. No stopPropagation needed. */}
+                <div className="flex items-center gap-1 shrink-0">
                   <UserActionMenu
                     userId={user.id}
                     email={user.email}

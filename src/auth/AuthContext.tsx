@@ -116,8 +116,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const { profile: p, error: pErr } = await fetchProfileWithTimeout(s.user.id);
           if (!mounted) return;
 
-          setProfile(p);
-          setProfileError(p ? null : pErr);
+          if (p) {
+            // Successful fetch — always update
+            setProfile(p);
+            setProfileError(null);
+          } else if (event === 'SIGNED_IN' || !profileRef.current) {
+            // No profile + fresh sign-in or first load — show the error
+            setProfile(null);
+            setProfileError(pErr);
+          }
+          // Network error on TOKEN_REFRESHED/etc with existing profile:
+          // keep the current profile, don't show the error screen
 
           if (event === 'SIGNED_IN') {
             clearLoadingTimeout();

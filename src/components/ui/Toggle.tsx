@@ -11,12 +11,6 @@ interface ToggleProps {
 }
 
 export function Toggle({ checked, onChange, size = 'md', disabled, label, description, className }: ToggleProps) {
-  const trackSize = size === 'sm' ? 'w-9 h-5' : 'w-11 h-6';
-  const thumbSize = size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4';
-  const thumbTranslate = size === 'sm'
-    ? (checked ? 'translate-x-4' : 'translate-x-0.5')
-    : (checked ? 'translate-x-5' : 'translate-x-1');
-
   if (label || description) {
     return (
       <div className={cn('flex items-center justify-between gap-3', className)}>
@@ -24,39 +18,57 @@ export function Toggle({ checked, onChange, size = 'md', disabled, label, descri
           {label && <span className="text-sm font-medium text-content-primary">{label}</span>}
           {description && <span className="text-xs text-content-muted">{description}</span>}
         </div>
-        <ToggleButton checked={checked} onChange={onChange} disabled={disabled}
-          trackSize={trackSize} thumbSize={thumbSize} thumbTranslate={thumbTranslate} />
+        <ToggleButton checked={checked} onChange={onChange} disabled={disabled} size={size} />
       </div>
     );
   }
 
   return (
     <ToggleButton checked={checked} onChange={onChange} disabled={disabled}
-      trackSize={trackSize} thumbSize={thumbSize} thumbTranslate={thumbTranslate}
-      className={className} />
+      size={size} className={className} />
   );
 }
 
-function ToggleButton({ checked, onChange, disabled, trackSize, thumbSize, thumbTranslate, className }: any) {
+function ToggleButton({
+  checked, onChange, disabled, size = 'md', className,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+  size?: 'sm' | 'md';
+  className?: string;
+}) {
+  // Track and thumb sizes in px — explicit values avoid translateX + translateY
+  // stacking bugs on iOS Safari WebKit
+  const track = size === 'sm' ? { w: 36, h: 20 } : { w: 44, h: 24 };
+  const thumb = size === 'sm' ? { w: 14, h: 14 } : { w: 16, h: 16 };
+  const pad   = size === 'sm' ? 3 : 4; // gap from edge
+
+  const thumbLeft  = checked ? track.w - thumb.w - pad : pad;
+  const thumbTop   = (track.h - thumb.h) / 2;
+
   return (
     <button
       role="switch"
       aria-checked={checked}
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
+      style={{ width: track.w, height: track.h }}
       className={cn(
         'relative shrink-0 rounded-full transition-colors duration-200',
-        trackSize,
         checked ? 'accent-gradient' : 'bg-white/[0.12]',
         disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
         className,
       )}
     >
       <span
-        className={cn(
-          'absolute top-1/2 -translate-y-1/2 rounded-full bg-white shadow transition-transform duration-200',
-          thumbSize, thumbTranslate,
-        )}
+        className="absolute rounded-full bg-white shadow transition-all duration-200"
+        style={{
+          width:  thumb.w,
+          height: thumb.h,
+          left:   thumbLeft,
+          top:    thumbTop,
+        }}
       />
     </button>
   );

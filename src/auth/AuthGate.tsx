@@ -9,6 +9,7 @@ import { SuspendedPage } from './SuspendedPage';
 import { Spinner, Button, GlassCard } from '../components/ui';
 import { useAnalytics } from '../analytics/AnalyticsContext';
 import { detectPlatform } from '../analytics/sessionManager';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 const AUTH_ROUTES = ['/signin', '/verify-otp', '/pending'];
 
@@ -70,6 +71,17 @@ function getPendingReg(): string | null {
 }
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
+  // ── Dev bypass: when Supabase is not configured (no .env.local),
+  // skip the auth gate entirely so the app is usable locally.
+  // This path is never reached in production where env vars are always set.
+  if (!isSupabaseConfigured) {
+    return <>{children}</>;
+  }
+
+  return <AuthGateInner>{children}</AuthGateInner>;
+}
+
+function AuthGateInner({ children }: { children: React.ReactNode }) {
   const { isLoading, session, profile, profileError, signOut, refreshProfile } = useAuth();
   const { track } = useAnalytics();
   const navigate  = useNavigate();

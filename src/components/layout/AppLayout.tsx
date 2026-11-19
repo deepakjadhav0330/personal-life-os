@@ -5,16 +5,17 @@ import { Sidebar } from './Sidebar';
 import { useAnalytics } from '../../analytics/AnalyticsContext';
 
 const PATH_MODULE_MAP: Record<string, string> = {
-  '/':          'dashboard',
-  '/tasks':     'tasks',
-  '/habits':    'habits',
-  '/fitness':   'fitness',
-  '/finance':   'finance',
-  '/journal':   'journal',
-  '/goals':     'goals',
-  '/calendar':  'calendar',
-  '/learning':  'learning',
-  '/settings':  'settings',
+  '/':              'dashboard',
+  '/tasks':         'tasks',
+  '/habits':        'habits',
+  '/fitness':       'fitness',
+  '/finance':       'finance',
+  '/journal':       'journal',
+  '/goals':         'goals',
+  '/calendar':      'calendar',
+  '/learning':      'learning',
+  '/settings':      'settings',
+  '/intelligence':  'intelligence',
 };
 
 export function AppLayout() {

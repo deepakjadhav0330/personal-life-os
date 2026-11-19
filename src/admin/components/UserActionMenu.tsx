@@ -3,7 +3,6 @@ import { CheckCircle2, XCircle, ShieldOff, ShieldCheck, LogOut, MoreHorizontal }
 import { Button, Modal, Textarea, GlassCard, BottomSheet } from '../../components/ui';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../stores/useToastStore';
-import { cn } from '../../utils/cn';
 
 type UserStatus = 'pending' | 'approved' | 'suspended';
 
@@ -188,21 +187,6 @@ export function UserActionMenu({
         </div>
       </Modal>
     </div>
-  );
-}
-
-function ActionItem({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-content-secondary',
-        'hover:bg-white/[0.07] hover:text-content-primary transition-colors text-left',
-      )}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }
 

@@ -14,6 +14,7 @@ import { JournalPage } from './modules/journal/JournalPage';
 import { GoalsPage } from './modules/goals/GoalsPage';
 import { CalendarPage } from './modules/calendar/CalendarPage';
 import { LearningPage } from './modules/learning/LearningPage';
+import { IntelligencePage } from './modules/intelligence/IntelligencePage';
 import { SettingsPage } from './modules/settings/SettingsPage';
 import { PrivacyPage } from './modules/settings/PrivacyPage';
 import { InstallGuidePage } from './modules/settings/InstallGuidePage';
@@ -84,6 +85,7 @@ export function App() {
           <Route path="settings/install" element={<InstallGuidePage />} />
           <Route path="settings/shortcuts" element={<ShortcutsGuidePage />} />
           <Route path="settings/feedback" element={<FeedbackPage />} />
+          <Route path="intelligence"     element={<IntelligencePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
 

@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   LayoutDashboard, CheckSquare, Dumbbell, DollarSign, Grid3X3,
-  Flame, BookOpen, Target, CalendarDays, Settings, GraduationCap, ShieldCheck,
+  Flame, BookOpen, Target, CalendarDays, Settings, GraduationCap, ShieldCheck, Brain,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { db } from '../../db/database';
@@ -131,22 +131,24 @@ function MoreDrawer({
   );
 
   const stats: Record<string, string> = {
-    '/habits':   habitsTotal ? `${habitsDone}/${habitsTotal} done today` : 'Track consistency',
-    '/journal':  'Reflect & record',
-    '/goals':    activeGoals ? `${activeGoals} active goal${activeGoals !== 1 ? 's' : ''}` : 'Set a goal',
-    '/learning': learningMins ? `${formatMinutes(learningMins ?? 0)} this week` : 'Books & courses',
-    '/calendar': upcomingReminders ? `${upcomingReminders} upcoming` : 'Events & reminders',
-    '/settings': 'Preferences',
-    '/admin':    'User management',
+    '/habits':       habitsTotal ? `${habitsDone}/${habitsTotal} done today` : 'Track consistency',
+    '/journal':      'Reflect & record',
+    '/goals':        activeGoals ? `${activeGoals} active goal${activeGoals !== 1 ? 's' : ''}` : 'Set a goal',
+    '/learning':     learningMins ? `${formatMinutes(learningMins ?? 0)} this week` : 'Books & courses',
+    '/calendar':     upcomingReminders ? `${upcomingReminders} upcoming` : 'Events & reminders',
+    '/intelligence': 'Your personal insights',
+    '/settings':     'Preferences',
+    '/admin':        'User management',
   };
 
   const baseModules = [
-    { path: '/habits',   label: 'Habits',   icon: Flame,          color: '#f59e0b' },
-    { path: '/journal',  label: 'Journal',  icon: BookOpen,       color: '#8b5cf6' },
-    { path: '/goals',    label: 'Goals',    icon: Target,         color: '#22c55e' },
-    { path: '/learning', label: 'Learning', icon: GraduationCap,  color: '#3b82f6' },
-    { path: '/calendar', label: 'Calendar', icon: CalendarDays,   color: '#06b6d4' },
-    { path: '/settings', label: 'Settings', icon: Settings,       color: '#94a3b8' },
+    { path: '/habits',       label: 'Habits',       icon: Flame,          color: '#f59e0b' },
+    { path: '/journal',      label: 'Journal',      icon: BookOpen,       color: '#8b5cf6' },
+    { path: '/goals',        label: 'Goals',        icon: Target,         color: '#22c55e' },
+    { path: '/learning',     label: 'Learning',     icon: GraduationCap,  color: '#3b82f6' },
+    { path: '/calendar',     label: 'Calendar',     icon: CalendarDays,   color: '#06b6d4' },
+    { path: '/intelligence', label: 'Intelligence', icon: Brain,          color: '#7c3aed' },
+    { path: '/settings',     label: 'Settings',     icon: Settings,       color: '#94a3b8' },
   ];
 
   const displayModules = isAdmin

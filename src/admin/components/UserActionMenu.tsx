@@ -2,7 +2,6 @@ import { useState, useRef } from 'react';
 import { CheckCircle2, XCircle, ShieldOff, ShieldCheck, LogOut, MoreHorizontal } from 'lucide-react';
 import { Button, Modal, Textarea, GlassCard } from '../../components/ui';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../auth/AuthContext';
 import { toast } from '../../stores/useToastStore';
 import { cn } from '../../utils/cn';
 
@@ -37,8 +36,6 @@ async function callAdminFunction(
 export function UserActionMenu({
   userId, email, fullName, currentStatus, onActionComplete, compact = false,
 }: UserActionMenuProps) {
-  const { session: _session } = useAuth(); // kept for potential future use
-
   const btnRef = useRef<HTMLButtonElement>(null);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const [menuOpen, setMenuOpen]           = useState(false);
@@ -112,10 +109,10 @@ export function UserActionMenu({
 
         {menuOpen && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+            <div className="fixed inset-0" style={{ zIndex: 64 }} onClick={() => setMenuOpen(false)} />
             <div
-              className="z-50 w-44 glass-elevated rounded-card border border-white/[0.1] shadow-glass overflow-hidden"
-              style={{ position: 'fixed', top: menuPos.top, right: menuPos.right }}
+              className="w-44 glass-elevated rounded-card border border-white/[0.1] shadow-glass overflow-hidden"
+              style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 65 }}
             >
               {currentStatus === 'pending' && (
                 <>

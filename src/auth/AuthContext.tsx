@@ -61,6 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoadDone   = useRef(false);
+  // Ref tracks current profile so onAuthStateChange closure can read it without stale state
+  const profileRef        = useRef<Profile | null>(null);
 
   function startLoadingTimeout() {
     if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
@@ -76,6 +78,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loadingTimeoutRef.current = null;
     }
   }
+
+  // Keep profileRef current so the auth state change handler can read it
+  useEffect(() => { profileRef.current = profile; }, [profile]);
 
   const updateLastLogin = useCallback(async (userId: string): Promise<void> => {
     try {
@@ -99,6 +104,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setIsLoading(true);
             setProfileError(null);
             startLoadingTimeout();
+          }
+
+          // TOKEN_REFRESHED fires every hour and when iOS brings the app back from
+          // background. The user's profile hasn't changed — skip the network fetch
+          // to avoid a timeout error on a briefly unavailable network.
+          if ((event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') && profileRef.current) {
+            return;
           }
 
           const { profile: p, error: pErr } = await fetchProfileWithTimeout(s.user.id);

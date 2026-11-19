@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { RefreshCw, LogOut, WifiOff } from 'lucide-react';
 import { useAuth } from './AuthContext';
+import type { Profile } from './AuthContext';
 import { RegistrationPage } from './RegistrationPage';
 import { PendingApprovalPage } from './PendingApprovalPage';
 import { SuspendedPage } from './SuspendedPage';
@@ -73,10 +74,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const { track } = useAnalytics();
   const navigate  = useNavigate();
   const location  = useLocation();
+  // Last-known-good profile: persists across transient null states caused by
+  // network errors on background resume — prevents spurious error screens
+  const lastKnownProfile = useRef<Profile | null>(null);
+  if (profile) lastKnownProfile.current = profile;
+  // Use actual profile when available, fall back to last known if session is valid
+  const displayProfile = profile ?? (session ? lastKnownProfile.current : null);
 
   // Redirect authenticated + approved users away from auth-only screens
   useEffect(() => {
-    if (!isLoading && session && profile?.status === 'approved') {
+    if (!isLoading && session && displayProfile?.status === 'approved') {
       if (AUTH_ROUTES.some(r => location.pathname.startsWith(r))) {
         navigate('/', { replace: true });
       }
@@ -85,7 +92,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   // Fire app_opened once when authenticated + approved
   useEffect(() => {
-    if (!isLoading && session && profile?.status === 'approved') {
+    if (!isLoading && session && displayProfile?.status === 'approved') {
       track('app_opened', {
         platform:    detectPlatform(),
         app_version: import.meta.env.VITE_APP_VERSION ?? '1.0.0',
@@ -102,7 +109,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return <RegistrationPage />;
   }
 
-  if (!profile) {
+  if (!displayProfile) {
     // profileError tells us why the profile is missing
     if (profileError) {
       return (
@@ -117,8 +124,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     return <FullScreenSpinner />;
   }
 
-  if (profile.status === 'suspended') return <SuspendedPage />;
-  if (profile.status === 'pending')   return <PendingApprovalPage />;
+  if (displayProfile.status === 'suspended') return <SuspendedPage />;
+  if (displayProfile.status === 'pending')   return <PendingApprovalPage />;
 
   // Analytics disclosure is in Settings → Privacy (not a gate).
   // Approved users access the app immediately after sign-in.

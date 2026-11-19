@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { CheckCircle2, XCircle, ShieldOff, ShieldCheck, LogOut, MoreHorizontal } from 'lucide-react';
-import { Button, Modal, Textarea, GlassCard } from '../../components/ui';
+import { Button, Modal, Textarea, GlassCard, BottomSheet } from '../../components/ui';
 import { supabase } from '../../lib/supabase';
 import { toast } from '../../stores/useToastStore';
 import { cn } from '../../utils/cn';
@@ -36,8 +36,6 @@ async function callAdminFunction(
 export function UserActionMenu({
   userId, email, fullName, currentStatus, onActionComplete, compact = false,
 }: UserActionMenuProps) {
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const [menuOpen, setMenuOpen]           = useState(false);
   const [rejectOpen, setRejectOpen]       = useState(false);
   const [suspendOpen, setSuspendOpen]     = useState(false);
@@ -45,13 +43,6 @@ export function UserActionMenu({
   const [suspendReason, setSuspendReason] = useState('');
   const [loading, setLoading]             = useState<string | null>(null);
 
-  function openMenu() {
-    if (btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect();
-      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
-    }
-    setMenuOpen(true);
-  }
 
   async function approveUser() {
     setLoading('approve'); setMenuOpen(false);
@@ -99,39 +90,33 @@ export function UserActionMenu({
     return (
       <div>
         <button
-          ref={btnRef}
-          onClick={openMenu}
-          className="p-1.5 glass-1 rounded-lg text-content-muted hover:text-content-primary transition-colors"
+          onClick={() => setMenuOpen(true)}
+          className="p-1.5 glass-1 rounded-lg text-content-muted hover:text-content-primary transition-colors active:scale-95"
           disabled={isLoading}
         >
           <MoreHorizontal size={15} />
         </button>
 
-        {menuOpen && (
-          <>
-            <div className="fixed inset-0" style={{ zIndex: 64 }} onClick={() => setMenuOpen(false)} />
-            <div
-              className="w-44 glass-elevated rounded-card border border-white/[0.1] shadow-glass overflow-hidden"
-              style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 65 }}
-            >
-              {currentStatus === 'pending' && (
-                <>
-                  <ActionItem icon={<CheckCircle2 size={13} className="text-success" />} label="Approve" onClick={approveUser} />
-                  <ActionItem icon={<XCircle size={13} className="text-danger" />} label="Reject" onClick={() => { setMenuOpen(false); setRejectOpen(true); }} />
-                </>
-              )}
-              {currentStatus === 'approved' && (
-                <>
-                  <ActionItem icon={<ShieldOff size={13} className="text-warning" />} label="Suspend" onClick={() => { setMenuOpen(false); setSuspendOpen(true); }} />
-                  <ActionItem icon={<LogOut size={13} className="text-content-muted" />} label="Revoke sessions" onClick={revokeSessions} />
-                </>
-              )}
-              {currentStatus === 'suspended' && (
-                <ActionItem icon={<ShieldCheck size={13} className="text-success" />} label="Reactivate" onClick={reactivateUser} />
-              )}
-            </div>
-          </>
-        )}
+        {/* BottomSheet: reliable on iOS, no z-index conflicts */}
+        <BottomSheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Actions">
+          <div className="flex flex-col gap-1 pb-2">
+            {currentStatus === 'pending' && (
+              <>
+                <SheetAction icon={<CheckCircle2 size={16} className="text-success" />} label="Approve" onClick={approveUser} loading={loading === 'approve'} />
+                <SheetAction icon={<XCircle size={16} className="text-danger" />} label="Reject" onClick={() => { setMenuOpen(false); setRejectOpen(true); }} />
+              </>
+            )}
+            {currentStatus === 'approved' && (
+              <>
+                <SheetAction icon={<ShieldOff size={16} className="text-warning" />} label="Suspend" onClick={() => { setMenuOpen(false); setSuspendOpen(true); }} />
+                <SheetAction icon={<LogOut size={16} className="text-content-muted" />} label="Revoke sessions" onClick={revokeSessions} loading={loading === 'revoke'} />
+              </>
+            )}
+            {currentStatus === 'suspended' && (
+              <SheetAction icon={<ShieldCheck size={16} className="text-success" />} label="Reactivate" onClick={reactivateUser} loading={loading === 'reactivate'} />
+            )}
+          </div>
+        </BottomSheet>
 
         <Modal open={rejectOpen} onClose={() => setRejectOpen(false)} title="Reject Request">
           <div className="flex flex-col gap-4">
@@ -217,6 +202,22 @@ function ActionItem({ icon, label, onClick }: { icon: React.ReactNode; label: st
     >
       {icon}
       {label}
+    </button>
+  );
+}
+
+function SheetAction({ icon, label, onClick, loading }: {
+  icon: React.ReactNode; label: string; onClick: () => void; loading?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className="flex items-center gap-3 w-full px-4 py-3.5 text-sm text-content-secondary hover:bg-white/[0.07] hover:text-content-primary transition-colors text-left disabled:opacity-50 rounded-input"
+    >
+      {icon}
+      <span className="font-medium">{label}</span>
+      {loading && <span className="ml-auto text-xs text-content-muted">...</span>}
     </button>
   );
 }

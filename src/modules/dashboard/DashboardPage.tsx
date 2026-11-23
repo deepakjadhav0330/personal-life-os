@@ -17,30 +17,33 @@ import { QuickStatsWidget } from '../../components/widgets/QuickStatsWidget';
 import { GoalsWidget } from '../../components/widgets/GoalsWidget';
 import { RemindersWidget } from '../../components/widgets/RemindersWidget';
 import { QuickActionsWidget } from '../../components/widgets/QuickActionsWidget';
+import { FinancePulseWidget } from '../../components/widgets/FinancePulseWidget';
 import { db } from '../../db/database';
 import type { DashboardWidgetConfig } from '../../db/schema';
 import { CheckSquare, Flame, Target, DollarSign, ArrowRight } from 'lucide-react';
 
 const widgetMap: Record<string, React.ComponentType> = {
-  'greeting': GreetingWidget,
-  'daily-summary': DailySummaryWidget,
-  'tasks': TaskWidget,
-  'habits': HabitRingWidget,
-  'quick-stats': QuickStatsWidget,
-  'goals': GoalsWidget,
-  'reminders': RemindersWidget,
-  'quick-actions': QuickActionsWidget,
+  'greeting':       GreetingWidget,
+  'daily-summary':  DailySummaryWidget,
+  'tasks':          TaskWidget,
+  'habits':         HabitRingWidget,
+  'quick-stats':    QuickStatsWidget,
+  'finance-pulse':  FinancePulseWidget,
+  'goals':          GoalsWidget,
+  'reminders':      RemindersWidget,
+  'quick-actions':  QuickActionsWidget,
 };
 
 const defaultConfig: DashboardWidgetConfig[] = [
-  { widgetId: 'greeting',       label: 'Greeting',       visible: true, order: 0 },
-  { widgetId: 'daily-summary',  label: 'Daily Summary',  visible: true, order: 1 },
-  { widgetId: 'tasks',          label: 'Tasks',          visible: true, order: 2 },
-  { widgetId: 'habits',         label: 'Habit Progress', visible: true, order: 3 },
-  { widgetId: 'quick-stats',    label: 'Quick Stats',    visible: true, order: 4 },
-  { widgetId: 'goals',          label: 'Goals',          visible: true, order: 5 },
-  { widgetId: 'reminders',      label: 'Reminders',      visible: true, order: 6 },
-  { widgetId: 'quick-actions',  label: 'Quick Actions',  visible: true, order: 7 },
+  { widgetId: 'greeting',      label: 'Greeting',       visible: true,  order: 0 },
+  { widgetId: 'daily-summary', label: 'Daily Summary',  visible: true,  order: 1 },
+  { widgetId: 'tasks',         label: 'Tasks',          visible: true,  order: 2 },
+  { widgetId: 'habits',        label: 'Habit Progress', visible: true,  order: 3 },
+  { widgetId: 'finance-pulse', label: 'Finance Pulse',  visible: true,  order: 4 },
+  { widgetId: 'quick-stats',   label: 'Quick Stats',    visible: true,  order: 5 },
+  { widgetId: 'goals',         label: 'Goals',          visible: true,  order: 6 },
+  { widgetId: 'reminders',     label: 'Reminders',      visible: true,  order: 7 },
+  { widgetId: 'quick-actions', label: 'Quick Actions',  visible: true,  order: 8 },
 ];
 
 export function DashboardPage() {

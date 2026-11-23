@@ -21,7 +21,9 @@ import {
   startOfWeek, endOfWeek, subWeeks, getDate, getDaysInMonth,
 } from 'date-fns';
 
-type FinanceTab = 'overview' | 'transactions' | 'budgets';
+import { FinanceInsightsTab } from './FinanceInsightsTab';
+
+type FinanceTab = 'overview' | 'transactions' | 'budgets' | 'insights';
 
 // ─── Category metadata ────────────────────────────────────────
 
@@ -145,6 +147,7 @@ export function FinancePage() {
             { id: 'overview',     label: 'Overview' },
             { id: 'transactions', label: 'Transactions' },
             { id: 'budgets',      label: 'Budgets' },
+            { id: 'insights',     label: 'Insights' },
           ]}
           activeTab={activeTab}
           onChange={id => setActiveTab(id as FinanceTab)}
@@ -156,7 +159,8 @@ export function FinancePage() {
             onExternalAddClose={() => setIsAddOpen(false)}
           />
         )}
-        {activeTab === 'budgets' && <BudgetsTab />}
+        {activeTab === 'budgets'   && <BudgetsTab />}
+        {activeTab === 'insights'  && <FinanceInsightsTab />}
       </div>
 
       <BottomSheet open={isScanOpen} onClose={() => setIsScanOpen(false)} title="Scan Receipt" snapPoints>

@@ -32,6 +32,17 @@ export function SettingsPage() {
   const [fatTarget, setFatTarget] = useSetting('fatTarget', 70);
   const [waterTarget, setWaterTarget] = useSetting('waterTarget', 2500);
   const [dashboardConfig, setDashboardConfig] = useSetting<DashboardWidgetConfig[]>('dashboardConfig', defaultDashboardConfig);
+
+  // Merge stored config with defaultDashboardConfig so newly added widgets
+  // appear in the list even before the Dashboard page has persisted the merge.
+  const storedConfig  = dashboardConfig ?? defaultDashboardConfig;
+  const storedIds     = new Set(storedConfig.map(w => w.widgetId));
+  const mergedConfig  = [
+    ...storedConfig,
+    ...defaultDashboardConfig
+      .filter(w => !storedIds.has(w.widgetId))
+      .map((w, i) => ({ ...w, order: storedConfig.length + i })),
+  ].sort((a, b) => a.order - b.order);
   const [clearConfirmStep, setClearConfirmStep] = useState(0);
   const [clearInput, setClearInput] = useState('');
   const [storageInfo, setStorageInfo] = useState<{ used: string; total: string } | null>(null);
@@ -98,19 +109,18 @@ export function SettingsPage() {
   };
 
   const toggleWidget = (widgetId: string) => {
-    const config = (dashboardConfig ?? defaultDashboardConfig).map(w =>
+    const config = mergedConfig.map(w =>
       w.widgetId === widgetId ? { ...w, visible: !w.visible } : w
     );
     setDashboardConfig(config);
   };
 
   const moveWidget = (widgetId: string, dir: 'up' | 'down') => {
-    const config = [...(dashboardConfig ?? defaultDashboardConfig)].sort((a, b) => a.order - b.order);
+    const config = [...mergedConfig];
     const idx = config.findIndex(w => w.widgetId === widgetId);
     if (dir === 'up' && idx > 0) [config[idx - 1], config[idx]] = [config[idx], config[idx - 1]];
     else if (dir === 'down' && idx < config.length - 1) [config[idx], config[idx + 1]] = [config[idx + 1], config[idx]];
-    const reordered = config.map((w, i) => ({ ...w, order: i }));
-    setDashboardConfig(reordered);
+    setDashboardConfig(config.map((w, i) => ({ ...w, order: i })));
   };
 
   const clearAllData = async () => {
@@ -230,7 +240,7 @@ ${appUrl}`;
         {/* Dashboard customization */}
         <SettingSection title="Dashboard Widgets">
           <div className="flex flex-col gap-2">
-            {(dashboardConfig ?? defaultDashboardConfig).sort((a, b) => a.order - b.order).map((widget, idx, arr) => (
+            {mergedConfig.map((widget, idx, arr) => (
               <div key={widget.widgetId} className="flex items-center gap-3 glass-1 rounded-input px-3 py-2.5">
                 <span className="text-sm text-content-primary flex-1">{widget.label}</span>
                 <div className="flex gap-1">

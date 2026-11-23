@@ -1,9 +1,21 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { readFileSync } from 'node:fs'
+
+// Read version from package.json at build time so each new release
+// automatically updates the version guard in main.tsx — no Cloudflare
+// env var change required to bust the PWA service worker cache.
+const pkg = JSON.parse(readFileSync('./package.json', 'utf-8')) as { version: string };
 
 export default defineConfig({
   base: '/',
+  define: {
+    // Inject the package.json version as the app version.
+    // main.tsx reads this via import.meta.env.VITE_APP_VERSION.
+    // This overrides the Cloudflare env var when building from source.
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
+  },
   plugins: [
     react(),
     VitePWA({

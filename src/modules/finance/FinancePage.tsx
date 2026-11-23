@@ -151,6 +151,7 @@ export function FinancePage() {
           ]}
           activeTab={activeTab}
           onChange={id => setActiveTab(id as FinanceTab)}
+          scrollable
         />
         {activeTab === 'overview'     && <OverviewTab />}
         {activeTab === 'transactions' && (

@@ -71,7 +71,14 @@ export function DashboardPage() {
     return tasks > 0 || habits > 0 || goals > 0;
   }, [], null); // null = still loading
 
-  const config = dashConfig?.length ? dashConfig : defaultConfig;
+  // Merge stored config with defaultConfig so any newly introduced widgets
+  // appear automatically for existing users who already have a saved config.
+  const storedConfig  = dashConfig?.length ? dashConfig : defaultConfig;
+  const storedIds     = new Set(storedConfig.map(w => w.widgetId));
+  const missingWidgets = defaultConfig
+    .filter(w => !storedIds.has(w.widgetId))
+    .map((w, i) => ({ ...w, order: storedConfig.length + i }));
+  const config        = [...storedConfig, ...missingWidgets];
   const visibleWidgets = config.filter(w => w.visible).sort((a, b) => a.order - b.order);
 
   return (

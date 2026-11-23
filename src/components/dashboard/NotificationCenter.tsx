@@ -16,6 +16,8 @@ interface NotificationCenterProps {
 
 // ── Map nudge type/id to a readable category label ───────────
 function nudgeCategoryLabel(id: string): string {
+  if (id === 'admin-pending-requests')  return 'New onboarding requests';
+  if (id === 'admin-pending-approvals') return 'Pending approvals';
   if (id.startsWith('streak'))      return 'Streak at risk';
   if (id.startsWith('late-habits')) return 'Habits';
   if (id.startsWith('budget-over')) return 'Budget exceeded';

@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Info } from 'lucide-react';
+import { RefreshCw, Info, Database, Upload } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { GlassCard, EmptyState } from '../components/ui';
+import { GlassCard, EmptyState, Button } from '../components/ui';
 import { useAuth } from '../auth/AuthContext';
 import { EVENT_LABELS, type EventName } from '../analytics/events';
 import { cn } from '../utils/cn';
+import { db } from '../db/database';
+import { analytics } from '../analytics/analyticsClient';
 
 interface ProductStats {
   feature_adoption: { event_name: EventName; adopters: number; total_events: number; pct: number }[];
@@ -62,6 +64,9 @@ export function AdminProductPage() {
       </div>
 
       {error && <GlassCard className="border-danger/30"><p className="text-sm text-danger">{error}</p></GlassCard>}
+
+      {/* ── Analytics diagnostic (admin-only debug) ─────────── */}
+      <AnalyticsDiagnostic />
 
       {/* Average stats */}
       <div className="grid grid-cols-3 gap-3">
@@ -243,4 +248,72 @@ function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   if (m < 60) return `${m}m`;
   return `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
+// ── Analytics Diagnostic ──────────────────────────────────────
+// Shows the admin's own queued event count and lets them force-flush.
+// Useful for debugging analytics pipeline issues.
+function AnalyticsDiagnostic() {
+  const { user } = useAuth();
+  const [queuedCount, setQueuedCount] = useState<number | null>(null);
+  const [flushing,    setFlushing]    = useState(false);
+  const [lastResult,  setLastResult]  = useState<string | null>(null);
+
+  const refreshCount = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const count = await db.analyticsQueue.where('user_id').equals(user.id).count();
+      setQueuedCount(count);
+    } catch { setQueuedCount(0); }
+  }, [user?.id]);
+
+  useEffect(() => { refreshCount(); }, [refreshCount]);
+
+  const forceFlush = async () => {
+    setFlushing(true);
+    setLastResult(null);
+    try {
+      await analytics.flush();
+      await refreshCount();
+      setLastResult('Flush completed. Check the feature adoption table for updated counts.');
+    } catch (e) {
+      setLastResult(`Flush error: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setFlushing(false);
+    }
+  };
+
+  return (
+    <GlassCard>
+      <div className="flex items-center gap-2 mb-3">
+        <Database size={13} className="text-accent" />
+        <p className="text-xs font-semibold text-content-muted uppercase tracking-widest">
+          Analytics Pipeline (your session)
+        </p>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs text-content-muted">Events queued locally (not yet sent)</p>
+          <p className={`text-2xl font-bold mt-0.5 ${(queuedCount ?? 0) > 0 ? 'text-warning' : 'text-success'}`}>
+            {queuedCount ?? '—'}
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          leftIcon={flushing ? <RefreshCw size={13} className="animate-spin" /> : <Upload size={13} />}
+          onClick={forceFlush}
+          disabled={flushing}
+        >
+          Force flush
+        </Button>
+      </div>
+      {lastResult && (
+        <p className="text-xs text-content-muted mt-3 leading-relaxed">{lastResult}</p>
+      )}
+      <p className="text-[10px] text-content-dim mt-2">
+        If queued count stays &gt; 0 after flush, check browser console for the specific error (401/403/etc).
+      </p>
+    </GlassCard>
+  );
 }

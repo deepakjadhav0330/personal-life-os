@@ -169,8 +169,9 @@ export type TransactionType = 'income' | 'expense';
 export type PaymentMethod = 'cash' | 'card' | 'upi' | 'bank_transfer' | 'other';
 
 export const EXPENSE_CATEGORIES = [
-  'food', 'groceries', 'shopping', 'travel', 'transport',
-  'entertainment', 'fitness', 'healthcare', 'bills', 'subscriptions', 'other',
+  'food', 'dining', 'groceries', 'shopping', 'travel', 'transport',
+  'entertainment', 'nightlife', 'wine_beers',
+  'fitness', 'healthcare', 'bills', 'subscriptions', 'other',
 ] as const;
 
 export const INCOME_CATEGORIES = [

@@ -13,7 +13,11 @@
   html {
     background-color: #06060f;
     color: #f0f0ff;
-    height: 100%;
+    /* No fixed height — letting html grow with content is required for
+       Chrome to correctly identify the document as a scrollable page.
+       height: 100% constrains html to exactly the viewport and confuses
+       Chrome's scroll model when body content overflows. */
+    min-height: 100%;
     overflow-x: hidden;
     -webkit-text-size-adjust: 100%;
   }
@@ -23,13 +27,12 @@
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
     min-height: 100dvh;
     overflow-x: hidden;
+    /* Explicit overflow-y: auto so Chrome always treats body as the vertical
+       scroll container, regardless of what overflow-x: hidden implies. */
+    overflow-y: auto;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior: none;
-
-    /* Base colour only — ambient blobs are rendered by the
-       AmbientBackground React component (fixed position) so
-       they work correctly on iOS Safari.                    */
     background-color: #06060f;
   }
 

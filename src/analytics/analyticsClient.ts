@@ -109,13 +109,24 @@ class AnalyticsClient {
         body: JSON.stringify({ events: batch }),
       });
 
-      if (response.status === 401 || response.status === 403) {
-        // Suspended or unauthenticated — drop current batch, do not retry
+      if (response.status === 401) {
+        // Truly unauthorized — the token is invalid or revoked.
+        // Retrying with the same token won't help, so drop the batch.
+        console.warn('[analytics] ingest-events 401 — token invalid. Dropping batch.');
+        await this.removeFromPersisted(batch);
+        return;
+      }
+
+      if (response.status === 403) {
+        // Account suspended — intentional gate. Drop and do not retry.
+        console.warn('[analytics] ingest-events 403 — account suspended. Dropping batch.');
         await this.removeFromPersisted(batch);
         return;
       }
 
       if (!response.ok) {
+        // 404 (profile temporarily not found), 5xx, network issues — retry.
+        console.warn(`[analytics] ingest-events ${response.status} — will retry.`);
         throw new Error(`ingest-events returned ${response.status}`);
       }
 

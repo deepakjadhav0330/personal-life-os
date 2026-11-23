@@ -10,21 +10,84 @@ import { toast } from '../../stores/useToastStore';
 import { useSetting } from '../../hooks/useSetting';
 import { formatCurrency } from '../../utils/format';
 import { todayStr, formatDate } from '../../utils/dates';
-import type { PaymentMethod } from '../../db/schema';
-import { Plus, TrendingUp, TrendingDown, Wallet, PieChart, Trash2, Edit3, Camera } from 'lucide-react';
+import type { PaymentMethod, Transaction } from '../../db/schema';
+import {
+  Plus, TrendingUp, TrendingDown, Wallet, PieChart,
+  Trash2, Edit3, Camera, Zap, ArrowUp, ArrowDown, Minus,
+} from 'lucide-react';
 import { PieChart as RePie, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis } from 'recharts';
-import { startOfMonth, endOfMonth, format as dateFmt, subMonths } from 'date-fns';
+import {
+  startOfMonth, endOfMonth, format as dateFmt, subMonths,
+  startOfWeek, endOfWeek, subWeeks, getDate, getDaysInMonth,
+} from 'date-fns';
 
 type FinanceTab = 'overview' | 'transactions' | 'budgets';
 
-const CATEGORY_COLORS: Record<string, string> = {
-  food: '#f59e0b', groceries: '#22c55e', shopping: '#8b5cf6',
-  travel: '#3b82f6', transport: '#06b6d4', entertainment: '#ec4899',
-  fitness: '#10b981', healthcare: '#ef4444', bills: '#6366f1',
-  subscriptions: '#f97316', other: '#94a3b8',
-  salary: '#22c55e', freelance: '#3b82f6', investment: '#8b5cf6',
-  gift: '#f59e0b',
+// ─── Category metadata ────────────────────────────────────────
+
+export const CATEGORY_COLORS: Record<string, string> = {
+  food:          '#f59e0b',
+  dining:        '#fb923c',
+  groceries:     '#22c55e',
+  shopping:      '#8b5cf6',
+  travel:        '#3b82f6',
+  transport:     '#06b6d4',
+  entertainment: '#ec4899',
+  nightlife:     '#a855f7',
+  wine_beers:    '#dc2626',
+  fitness:       '#10b981',
+  healthcare:    '#ef4444',
+  bills:         '#6366f1',
+  subscriptions: '#f97316',
+  other:         '#94a3b8',
+  salary:        '#22c55e',
+  freelance:     '#3b82f6',
+  investment:    '#8b5cf6',
+  gift:          '#f59e0b',
 };
+
+export function getCategoryLabel(cat: string): string {
+  const labels: Record<string, string> = {
+    wine_beers: 'Wine & Beers',
+    nightlife:  'Nightlife',
+    dining:     'Dining',
+  };
+  return labels[cat] ?? cat.charAt(0).toUpperCase() + cat.slice(1).replace(/_/g, ' ');
+}
+
+export function getCategoryEmoji(cat: string): string {
+  const map: Record<string, string> = {
+    food:          '🍔',
+    dining:        '🍽️',
+    groceries:     '🛒',
+    shopping:      '🛍️',
+    travel:        '✈️',
+    transport:     '🚗',
+    entertainment: '🎬',
+    nightlife:     '🎵',
+    wine_beers:    '🍷',
+    fitness:       '💪',
+    healthcare:    '💊',
+    bills:         '📋',
+    subscriptions: '📱',
+    other:         '💸',
+    salary:        '💼',
+    freelance:     '💻',
+    investment:    '📈',
+    gift:          '🎁',
+  };
+  return map[cat] || '💸';
+}
+
+const EXPENSE_CATEGORY_OPTIONS = [
+  'food', 'dining', 'groceries', 'shopping', 'travel', 'transport',
+  'entertainment', 'nightlife', 'wine_beers',
+  'fitness', 'healthcare', 'bills', 'subscriptions', 'other',
+];
+
+const INCOME_CATEGORY_OPTIONS = ['salary', 'freelance', 'investment', 'gift', 'other'];
+
+// ─── Tooltip ────────────────────────────────────────────────
 
 const GlassTooltip = ({ active, payload }: any) => {
   if (!active || !payload?.length) return null;
@@ -34,6 +97,8 @@ const GlassTooltip = ({ active, payload }: any) => {
     </div>
   );
 };
+
+// ─── Page shell ───────────────────────────────────────────────
 
 export function FinancePage() {
   const [activeTab, setActiveTab] = useState<FinanceTab>('overview');
@@ -76,16 +141,24 @@ export function FinancePage() {
       } />
       <div className="px-4 pb-4 flex flex-col gap-3">
         <Tabs
-          tabs={[{ id: 'overview', label: 'Overview' }, { id: 'transactions', label: 'Transactions' }, { id: 'budgets', label: 'Budgets' }]}
+          tabs={[
+            { id: 'overview',     label: 'Overview' },
+            { id: 'transactions', label: 'Transactions' },
+            { id: 'budgets',      label: 'Budgets' },
+          ]}
           activeTab={activeTab}
           onChange={id => setActiveTab(id as FinanceTab)}
         />
-        {activeTab === 'overview' && <OverviewTab />}
-        {activeTab === 'transactions' && <TransactionsTab externalAddOpen={isAddOpen} onExternalAddClose={() => setIsAddOpen(false)} />}
+        {activeTab === 'overview'     && <OverviewTab />}
+        {activeTab === 'transactions' && (
+          <TransactionsTab
+            externalAddOpen={isAddOpen}
+            onExternalAddClose={() => setIsAddOpen(false)}
+          />
+        )}
         {activeTab === 'budgets' && <BudgetsTab />}
       </div>
 
-      {/* Receipt scanner */}
       <BottomSheet open={isScanOpen} onClose={() => setIsScanOpen(false)} title="Scan Receipt" snapPoints>
         <ReceiptScanner
           currency={currency}
@@ -95,29 +168,89 @@ export function FinancePage() {
         />
       </BottomSheet>
 
-      {/* Quick-add from header or Shortcut */}
-      <BottomSheet open={isAddOpen && activeTab !== 'transactions'} onClose={() => { setIsAddOpen(false); setScanPrefill(null); }} title="Add Transaction" snapPoints>
-        <TransactionForm txnId={null} initialType={addType} prefill={scanPrefill ?? undefined} onClose={() => { setIsAddOpen(false); setScanPrefill(null); }} />
+      <BottomSheet
+        open={isAddOpen && activeTab !== 'transactions'}
+        onClose={() => { setIsAddOpen(false); setScanPrefill(null); }}
+        title="Add Transaction"
+        snapPoints
+      >
+        <TransactionForm
+          txnId={null}
+          initialType={addType}
+          prefill={scanPrefill ?? undefined}
+          onClose={() => { setIsAddOpen(false); setScanPrefill(null); }}
+        />
       </BottomSheet>
     </div>
   );
 }
 
+// ─── Overview Tab ─────────────────────────────────────────────
+
 function OverviewTab() {
   const [currency] = useSetting('currency', 'INR');
-  const now = new Date();
-  const monthStart = dateFmt(startOfMonth(now), 'yyyy-MM-dd');
-  const monthEnd = dateFmt(endOfMonth(now), 'yyyy-MM-dd');
+  const now        = new Date();
+  const dayOfMonth = getDate(now);
+  const daysInMonth = getDaysInMonth(now);
+  const daysRemaining = daysInMonth - dayOfMonth;
 
+  const monthStart = dateFmt(startOfMonth(now), 'yyyy-MM-dd');
+  const monthEnd   = dateFmt(endOfMonth(now),   'yyyy-MM-dd');
+
+  // ── Current month ────────────────────────────────────────────
   const monthTxns = useLiveQuery(
     () => db.transactions.where('date').between(monthStart, monthEnd, true, true).toArray(),
     [monthStart],
     [],
   );
 
-  const income = monthTxns?.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0) ?? 0;
+  // ── Last 14 days (for week-on-week) ──────────────────────────
+  const twoWeeksAgoStr = dateFmt(new Date(now.getTime() - 14 * 86400000), 'yyyy-MM-dd');
+  const last14 = useLiveQuery(
+    () => db.transactions
+      .where('date').between(twoWeeksAgoStr, dateFmt(now, 'yyyy-MM-dd'), true, true)
+      .filter(t => t.type === 'expense')
+      .toArray(),
+    [twoWeeksAgoStr],
+    [],
+  );
+
+  // ── Last month total (for projection context) ─────────────────
+  const lastMonthTotal = useLiveQuery(async () => {
+    const d = subMonths(now, 1);
+    const txns = await db.transactions
+      .where('date')
+      .between(dateFmt(startOfMonth(d), 'yyyy-MM-dd'), dateFmt(endOfMonth(d), 'yyyy-MM-dd'), true, true)
+      .filter(t => t.type === 'expense')
+      .toArray();
+    return txns.reduce((s, t) => s + t.amount, 0);
+  }, [], 0);
+
+  // ── 6-month trend ─────────────────────────────────────────────
+  const monthlyData = Array.from({ length: 6 }, (_, i) => {
+    const d = subMonths(now, 5 - i);
+    return {
+      month: dateFmt(d, 'MMM'),
+      start: dateFmt(startOfMonth(d), 'yyyy-MM-dd'),
+      end:   dateFmt(endOfMonth(d),   'yyyy-MM-dd'),
+    };
+  });
+
+  const trendData = useLiveQuery(async () => {
+    return Promise.all(monthlyData.map(async ({ month, start, end }) => {
+      const txns = await db.transactions.where('date').between(start, end, true, true).toArray();
+      return {
+        month,
+        income:   txns.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+        expenses: txns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
+      };
+    }));
+  }, [], []);
+
+  // ── Derived totals ────────────────────────────────────────────
+  const income   = monthTxns?.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0) ?? 0;
   const expenses = monthTxns?.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0) ?? 0;
-  const savings = income - expenses;
+  const savings  = income - expenses;
   const savingsRate = income > 0 ? Math.round((savings / income) * 100) : 0;
 
   // Category breakdown
@@ -130,56 +263,71 @@ function OverviewTab() {
     .slice(0, 6)
     .map(([name, value]) => ({ name, value: Math.round(value) }));
 
-  // 6-month trend
-  const monthlyData = Array.from({ length: 6 }, (_, i) => {
-    const d = subMonths(now, 5 - i);
-    const start = dateFmt(startOfMonth(d), 'yyyy-MM-dd');
-    const end = dateFmt(endOfMonth(d), 'yyyy-MM-dd');
-    return { month: dateFmt(d, 'MMM'), start, end };
-  });
-
-  const trendData = useLiveQuery(async () => {
-    return Promise.all(monthlyData.map(async ({ month, start, end }) => {
-      const txns = await db.transactions.where('date').between(start, end, true, true).toArray();
-      return {
-        month,
-        income: txns.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
-        expenses: txns.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
-      };
-    }));
-  }, [], []);
-
   return (
     <div className="flex flex-col gap-3">
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-2">
         <GlassCard padding="sm">
-          <div className="flex items-center gap-2 mb-1"><TrendingUp size={14} className="text-success" /><p className="text-xs text-content-muted">Income</p></div>
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp size={14} className="text-success" />
+            <p className="text-xs text-content-muted">Income</p>
+          </div>
           <p className="text-lg font-bold text-success">{formatCurrency(income, currency)}</p>
         </GlassCard>
         <GlassCard padding="sm">
-          <div className="flex items-center gap-2 mb-1"><TrendingDown size={14} className="text-danger" /><p className="text-xs text-content-muted">Expenses</p></div>
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingDown size={14} className="text-danger" />
+            <p className="text-xs text-content-muted">Expenses</p>
+          </div>
           <p className="text-lg font-bold text-danger">{formatCurrency(expenses, currency)}</p>
         </GlassCard>
         <GlassCard padding="sm">
-          <div className="flex items-center gap-2 mb-1"><Wallet size={14} className="text-accent" /><p className="text-xs text-content-muted">Savings</p></div>
-          <p className={`text-lg font-bold ${savings >= 0 ? 'text-success' : 'text-danger'}`}>{formatCurrency(savings, currency)}</p>
+          <div className="flex items-center gap-2 mb-1">
+            <Wallet size={14} className="text-accent" />
+            <p className="text-xs text-content-muted">Savings</p>
+          </div>
+          <p className={`text-lg font-bold ${savings >= 0 ? 'text-success' : 'text-danger'}`}>
+            {formatCurrency(savings, currency)}
+          </p>
         </GlassCard>
         <GlassCard padding="sm">
-          <div className="flex items-center gap-2 mb-1"><PieChart size={14} className="text-warning" /><p className="text-xs text-content-muted">Rate</p></div>
-          <p className={`text-lg font-bold ${savingsRate > 20 ? 'text-success' : savingsRate > 10 ? 'text-warning' : 'text-danger'}`}>{savingsRate}%</p>
+          <div className="flex items-center gap-2 mb-1">
+            <PieChart size={14} className="text-warning" />
+            <p className="text-xs text-content-muted">Savings rate</p>
+          </div>
+          <p className={`text-lg font-bold ${savingsRate > 20 ? 'text-success' : savingsRate > 10 ? 'text-warning' : 'text-danger'}`}>
+            {savingsRate}%
+          </p>
         </GlassCard>
       </div>
 
-      {/* Pie chart */}
+      {/* ── Smart insights ──────────────────────────────────────── */}
+      {expenses > 0 && (
+        <SpendingInsights
+          expenses={expenses}
+          dayOfMonth={dayOfMonth}
+          daysInMonth={daysInMonth}
+          daysRemaining={daysRemaining}
+          categoryTotals={categoryTotals}
+          last14={last14 ?? []}
+          lastMonthTotal={lastMonthTotal ?? 0}
+          currency={currency}
+          now={now}
+        />
+      )}
+
+      {/* Category breakdown */}
       {pieData.length > 0 && (
         <GlassCard>
-          <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">Category Breakdown</p>
+          <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">
+            Category Breakdown
+          </p>
           <div className="flex items-center gap-4">
             <ResponsiveContainer width={140} height={140}>
               <RePie>
                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="value">
-                  {pieData.map((entry) => (
+                  {pieData.map(entry => (
                     <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name] || '#94a3b8'} />
                   ))}
                 </Pie>
@@ -190,8 +338,12 @@ function OverviewTab() {
               {pieData.slice(0, 5).map(item => (
                 <div key={item.name} className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_COLORS[item.name] || '#94a3b8' }} />
-                  <span className="text-xs text-content-secondary capitalize flex-1">{item.name}</span>
-                  <span className="text-xs font-medium text-content-primary">{formatCurrency(item.value, currency)}</span>
+                  <span className="text-xs text-content-secondary flex-1">
+                    {getCategoryLabel(item.name)}
+                  </span>
+                  <span className="text-xs font-medium text-content-primary">
+                    {formatCurrency(item.value, currency)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -202,38 +354,201 @@ function OverviewTab() {
       {/* 6-month trend */}
       {(trendData ?? []).some(d => d.income > 0 || d.expenses > 0) && (
         <GlassCard>
-          <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">6-Month Trend</p>
+          <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">
+            6-Month Trend
+          </p>
           <ResponsiveContainer width="100%" height={130}>
             <BarChart data={trendData ?? []}>
               <XAxis dataKey="month" tick={{ fill: '#606080', fontSize: 10 }} axisLine={false} tickLine={false} />
               <Tooltip content={<GlassTooltip />} />
-              <Bar dataKey="income" fill="#22c55e" radius={[2, 2, 0, 0]} name="Income" />
+              <Bar dataKey="income"   fill="#22c55e" radius={[2, 2, 0, 0]} name="Income" />
               <Bar dataKey="expenses" fill="#ef4444" radius={[2, 2, 0, 0]} name="Expenses" />
             </BarChart>
           </ResponsiveContainer>
         </GlassCard>
       )}
+
     </div>
   );
 }
 
-function TransactionsTab({ externalAddOpen, onExternalAddClose }: { externalAddOpen?: boolean; onExternalAddClose?: () => void }) {
-  const [currency] = useSetting('currency', 'INR');
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+// ─── Spending Insights ────────────────────────────────────────
 
-  // Respond to external "Add" CTA from the page header
+interface SpendingInsightsProps {
+  expenses:       number;
+  dayOfMonth:     number;
+  daysInMonth:    number;
+  daysRemaining:  number;
+  categoryTotals: Record<string, number>;
+  last14:         Transaction[];
+  lastMonthTotal: number;
+  currency:       string;
+  now:            Date;
+}
+
+function SpendingInsights({
+  expenses, dayOfMonth, daysInMonth, daysRemaining,
+  categoryTotals, last14, lastMonthTotal, currency, now,
+}: SpendingInsightsProps) {
+  const dailyAvg       = dayOfMonth > 0 ? expenses / dayOfMonth : 0;
+  const projected      = Math.round(dailyAvg * daysInMonth);
+
+  // Week-on-week from last 14 days data
+  const thisWeekStart  = dateFmt(startOfWeek(now,             { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const lastWeekStart  = dateFmt(startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const lastWeekEnd    = dateFmt(endOfWeek(subWeeks(now, 1),   { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const todayStr       = dateFmt(now, 'yyyy-MM-dd');
+
+  const thisWeekExp  = last14.filter(t => t.date >= thisWeekStart && t.date <= todayStr).reduce((s, t) => s + t.amount, 0);
+  const lastWeekExp  = last14.filter(t => t.date >= lastWeekStart && t.date <= lastWeekEnd).reduce((s, t) => s + t.amount, 0);
+  const weekChangePct = lastWeekExp > 0 ? Math.round(((thisWeekExp - lastWeekExp) / lastWeekExp) * 100) : null;
+
+  // Top category
+  const topCatEntry = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
+  const topCat      = topCatEntry?.[0];
+  const topCatAmt   = topCatEntry?.[1] ?? 0;
+  const topCatPct   = expenses > 0 ? Math.round((topCatAmt / expenses) * 100) : 0;
+
+  // Projection vs last month
+  const projectionDiff = lastMonthTotal > 0
+    ? Math.round(((projected - lastMonthTotal) / lastMonthTotal) * 100)
+    : null;
+
+  return (
+    <GlassCard>
+      <div className="flex items-center gap-2 mb-3">
+        <Zap size={13} className="text-accent" />
+        <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest">
+          This Month Analysis
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-0">
+
+        {/* Spending pace + projection */}
+        <div className="flex items-center justify-between py-2.5">
+          <div>
+            <p className="text-xs text-content-muted">Daily average</p>
+            <p className="text-sm font-semibold text-content-primary">
+              {formatCurrency(Math.round(dailyAvg), currency)}/day
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-content-muted">
+              Month projection
+              {projectionDiff !== null && (
+                <span className={`ml-1.5 ${projectionDiff > 10 ? 'text-warning' : projectionDiff < -10 ? 'text-success' : 'text-content-muted'}`}>
+                  ({projectionDiff > 0 ? '+' : ''}{projectionDiff}% vs last mo.)
+                </span>
+              )}
+            </p>
+            <p className={`text-sm font-semibold ${
+              projectionDiff !== null && projectionDiff > 15
+                ? 'text-warning'
+                : projectionDiff !== null && projectionDiff < -15
+                  ? 'text-success'
+                  : 'text-content-primary'
+            }`}>
+              ~{formatCurrency(projected, currency)}
+            </p>
+          </div>
+        </div>
+
+        <div className="h-px bg-white/[0.06]" />
+
+        {/* Days remaining */}
+        <div className="flex items-center justify-between py-2.5">
+          <p className="text-xs text-content-muted">Days elapsed / remaining</p>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm font-semibold text-content-primary">{dayOfMonth}</span>
+            <span className="text-xs text-content-muted">of {daysInMonth}</span>
+            <span className="text-xs text-content-muted">· {daysRemaining} left</span>
+          </div>
+        </div>
+
+        {/* Week-on-week — only show if last week has data */}
+        {lastWeekExp > 0 && (
+          <>
+            <div className="h-px bg-white/[0.06]" />
+            <div className="flex items-center justify-between py-2.5">
+              <p className="text-xs text-content-muted">This week</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-semibold text-content-primary">
+                  {formatCurrency(Math.round(thisWeekExp), currency)}
+                </p>
+                {weekChangePct !== null && (
+                  <span className={`text-[11px] flex items-center gap-0.5 ${
+                    weekChangePct > 0 ? 'text-danger' : weekChangePct < 0 ? 'text-success' : 'text-content-muted'
+                  }`}>
+                    {weekChangePct > 0
+                      ? <ArrowUp size={10} />
+                      : weekChangePct < 0
+                        ? <ArrowDown size={10} />
+                        : <Minus size={10} />
+                    }
+                    {Math.abs(weekChangePct)}% vs last week
+                  </span>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Top category */}
+        {topCat && (
+          <>
+            <div className="h-px bg-white/[0.06]" />
+            <div className="flex items-center justify-between py-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-base">{getCategoryEmoji(topCat)}</span>
+                <div>
+                  <p className="text-xs text-content-muted">Top category</p>
+                  <p className="text-sm font-semibold text-content-primary">
+                    {getCategoryLabel(topCat)}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-semibold text-content-primary">
+                  {formatCurrency(Math.round(topCatAmt), currency)}
+                </p>
+                <p className="text-[11px] text-content-muted">{topCatPct}% of spend</p>
+              </div>
+            </div>
+          </>
+        )}
+
+      </div>
+    </GlassCard>
+  );
+}
+
+// ─── Transactions Tab ─────────────────────────────────────────
+
+function TransactionsTab({
+  externalAddOpen,
+  onExternalAddClose,
+}: {
+  externalAddOpen?: boolean;
+  onExternalAddClose?: () => void;
+}) {
+  const [currency]   = useSetting('currency', 'INR');
+  const [isFormOpen, setIsFormOpen]   = useState(false);
+  const [editingId,  setEditingId]    = useState<number | null>(null);
+  const [deletingId, setDeletingId]   = useState<number | null>(null);
+  const [filterType, setFilterType]   = useState<'all' | 'income' | 'expense'>('all');
+
   const isSheetOpen = isFormOpen || !!externalAddOpen;
-  const closeSheet = () => { setIsFormOpen(false); setEditingId(null); onExternalAddClose?.(); };
+  const closeSheet  = () => { setIsFormOpen(false); setEditingId(null); onExternalAddClose?.(); };
 
   const transactions = useLiveQuery(
     () => db.transactions.orderBy('date').reverse().limit(50).toArray(),
     [], [],
   );
 
-  const filtered = filterType === 'all' ? (transactions ?? []) : (transactions ?? []).filter(t => t.type === filterType);
+  const filtered = filterType === 'all'
+    ? (transactions ?? [])
+    : (transactions ?? []).filter(t => t.type === filterType);
 
   async function deleteTransaction() {
     if (!deletingId) return;
@@ -247,16 +562,28 @@ function TransactionsTab({ externalAddOpen, onExternalAddClose }: { externalAddO
       <div className="flex items-center justify-between gap-3">
         <div className="flex gap-1">
           {(['all', 'income', 'expense'] as const).map(f => (
-            <button key={f} onClick={() => setFilterType(f)} className={`px-3 py-1.5 rounded-pill text-xs font-medium transition-all ${filterType === f ? 'accent-gradient text-white' : 'glass-1 text-content-muted'}`}>
+            <button
+              key={f}
+              onClick={() => setFilterType(f)}
+              className={`px-3 py-1.5 rounded-pill text-xs font-medium transition-all ${
+                filterType === f ? 'accent-gradient text-white' : 'glass-1 text-content-muted'
+              }`}
+            >
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
         </div>
-        <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setIsFormOpen(true)}>Add</Button>
+        <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setIsFormOpen(true)}>
+          Add
+        </Button>
       </div>
 
       {!filtered.length ? (
-        <EmptyState icon={<Wallet size={24} />} title="No transactions" action={{ label: 'Add First', onClick: () => setIsFormOpen(true) }} />
+        <EmptyState
+          icon={<Wallet size={24} />}
+          title="No transactions"
+          action={{ label: 'Add First', onClick: () => setIsFormOpen(true) }}
+        />
       ) : (
         <div className="flex flex-col gap-2">
           {filtered.map(txn => (
@@ -269,15 +596,28 @@ function TransactionsTab({ externalAddOpen, onExternalAddClose }: { externalAddO
                   {txn.type === 'income' ? '📈' : getCategoryEmoji(txn.category)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-content-primary truncate">{txn.description || txn.category}</p>
-                  <p className="text-xs text-content-muted">{formatDate(txn.date)} · {txn.paymentMethod.replace('_', ' ')}</p>
+                  <p className="text-sm font-medium text-content-primary truncate">
+                    {txn.description || getCategoryLabel(txn.category)}
+                  </p>
+                  <p className="text-xs text-content-muted">
+                    {formatDate(txn.date)} · {txn.paymentMethod.replace('_', ' ')}
+                  </p>
                 </div>
                 <p className={`text-sm font-bold shrink-0 ${txn.type === 'income' ? 'text-success' : 'text-danger'}`}>
                   {txn.type === 'income' ? '+' : '-'}{formatCurrency(txn.amount, currency)}
                 </p>
                 <div className="flex gap-1">
-                  <IconButton icon={<Edit3 size={12} />} label={`Edit ${txn.description || txn.category}`} onClick={() => { setEditingId(txn.id!); setIsFormOpen(true); }} />
-                  <IconButton icon={<Trash2 size={12} />} label={`Delete ${txn.description || txn.category}`} onClick={() => setDeletingId(txn.id!)} variant="danger" />
+                  <IconButton
+                    icon={<Edit3 size={12} />}
+                    label={`Edit transaction`}
+                    onClick={() => { setEditingId(txn.id!); setIsFormOpen(true); }}
+                  />
+                  <IconButton
+                    icon={<Trash2 size={12} />}
+                    label={`Delete transaction`}
+                    onClick={() => setDeletingId(txn.id!)}
+                    variant="danger"
+                  />
                 </div>
               </div>
             </GlassCard>
@@ -305,32 +645,42 @@ function TransactionsTab({ externalAddOpen, onExternalAddClose }: { externalAddO
   );
 }
 
-function TransactionForm({ txnId, onClose, initialType, prefill }: { 
-  txnId: number | null; 
-  onClose: () => void; 
+// ─── Transaction Form ─────────────────────────────────────────
+
+function TransactionForm({
+  txnId, onClose, initialType, prefill,
+}: {
+  txnId:       number | null;
+  onClose:     () => void;
   initialType?: 'expense' | 'income';
-  prefill?: { amount?: number; description?: string; category?: string };
+  prefill?:    { amount?: number; description?: string; category?: string };
 }) {
-  const [type, setType] = useState<'income' | 'expense'>(initialType ?? 'expense');
-  const [amount, setAmount] = useState(prefill?.amount ? String(prefill.amount) : '');
-  const [date, setDate] = useState(todayStr());
-  const [category, setCategory] = useState(prefill?.category ?? 'food');
-  const { track } = useAnalytics();
+  const [type,          setType]          = useState<'income' | 'expense'>(initialType ?? 'expense');
+  const [amount,        setAmount]        = useState(prefill?.amount ? String(prefill.amount) : '');
+  const [date,          setDate]          = useState(todayStr());
+  const [category,      setCategory]      = useState(prefill?.category ?? 'food');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('upi');
-  const [description, setDescription] = useState(prefill?.description ?? '');
-  const [isRecurring, setIsRecurring] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [currency] = useSetting('currency', 'INR');
+  const [description,   setDescription]   = useState(prefill?.description ?? '');
+  const [isRecurring,   setIsRecurring]   = useState(false);
+  const [loading,       setLoading]       = useState(false);
+  const [currency]      = useSetting('currency', 'INR');
+  const { track }       = useAnalytics();
 
   useEffect(() => {
     if (!txnId) return;
     db.transactions.get(txnId).then(txn => {
       if (!txn) return;
-      setType(txn.type); setAmount(txn.amount.toString()); setDate(txn.date);
-      setCategory(txn.category); setPaymentMethod(txn.paymentMethod);
-      setDescription(txn.description ?? ''); setIsRecurring(txn.isRecurring);
+      setType(txn.type);
+      setAmount(txn.amount.toString());
+      setDate(txn.date);
+      setCategory(txn.category);
+      setPaymentMethod(txn.paymentMethod);
+      setDescription(txn.description ?? '');
+      setIsRecurring(txn.isRecurring);
     });
-  }, [txnId]);  const handleSubmit = async () => {
+  }, [txnId]);
+
+  const handleSubmit = async () => {
     const amt = parseFloat(amount);
     if (!amt || isNaN(amt)) { toast.error('Enter a valid amount'); return; }
     setLoading(true);
@@ -342,35 +692,96 @@ function TransactionForm({ txnId, onClose, initialType, prefill }: {
         recurringFrequency: isRecurring ? 'monthly' as const : undefined,
         createdAt: now, updatedAt: now,
       };
-      if (txnId) { await db.transactions.update(txnId, data); toast.success('Updated!'); }
-      else { await db.transactions.add(data); track('transaction_created', { transaction_type: type, is_recurring: isRecurring }); toast.success('Added!'); }
+      if (txnId) {
+        await db.transactions.update(txnId, data);
+        toast.success('Updated!');
+      } else {
+        await db.transactions.add(data);
+        track('transaction_created', { transaction_type: type, is_recurring: isRecurring, category });
+        toast.success('Added!');
+      }
       onClose();
-    } catch { toast.error('Failed to save'); } finally { setLoading(false); }
+    } catch {
+      toast.error('Failed to save');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const expenseCategories = ['food', 'groceries', 'shopping', 'travel', 'transport', 'entertainment', 'fitness', 'healthcare', 'bills', 'subscriptions', 'other'].map(v => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }));
-  const incomeCategories = ['salary', 'freelance', 'investment', 'gift', 'other'].map(v => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }));
+  const expenseOptions = EXPENSE_CATEGORY_OPTIONS.map(v => ({
+    value: v,
+    label: `${getCategoryEmoji(v)}  ${getCategoryLabel(v)}`,
+  }));
+
+  const incomeOptions = INCOME_CATEGORY_OPTIONS.map(v => ({
+    value: v,
+    label: getCategoryLabel(v),
+  }));
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2">
         {(['income', 'expense'] as const).map(t => (
-          <button key={t} onClick={() => setType(t)} className={`flex-1 py-2.5 rounded-input text-sm font-medium transition-all ${type === t ? (t === 'income' ? 'bg-success text-white' : 'bg-danger text-white') : 'glass-1 text-content-muted'}`}>
+          <button
+            key={t}
+            onClick={() => { setType(t); setCategory(t === 'expense' ? 'food' : 'salary'); }}
+            className={`flex-1 py-2.5 rounded-input text-sm font-medium transition-all ${
+              type === t
+                ? (t === 'income' ? 'bg-success text-white' : 'bg-danger text-white')
+                : 'glass-1 text-content-muted'
+            }`}
+          >
             {t === 'income' ? '+ Income' : '- Expense'}
           </button>
         ))}
       </div>
-      <Input label="Amount *" type="number" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" autoFocus leftElement={<span className="text-xs">{currency === 'INR' ? '₹' : '$'}</span>} />
+
+      <Input
+        label="Amount *"
+        type="number"
+        inputMode="decimal"
+        value={amount}
+        onChange={e => setAmount(e.target.value)}
+        placeholder="0.00"
+        autoFocus
+        leftElement={<span className="text-xs">{currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency}</span>}
+      />
+
       <div className="grid grid-cols-2 gap-3">
-        <Select label="Category" value={category} onChange={e => setCategory(e.target.value)} options={type === 'income' ? incomeCategories : expenseCategories} />
-        <Select label="Payment" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as PaymentMethod)} options={[
-          { value: 'cash', label: 'Cash' }, { value: 'card', label: 'Card' },
-          { value: 'upi', label: 'UPI' }, { value: 'bank_transfer', label: 'Bank Transfer' }, { value: 'other', label: 'Other' },
-        ]} />
+        <Select
+          label="Category"
+          value={category}
+          onChange={e => setCategory(e.target.value)}
+          options={type === 'income' ? incomeOptions : expenseOptions}
+        />
+        <Select
+          label="Payment"
+          value={paymentMethod}
+          onChange={e => setPaymentMethod(e.target.value as PaymentMethod)}
+          options={[
+            { value: 'cash',          label: 'Cash' },
+            { value: 'card',          label: 'Card' },
+            { value: 'upi',           label: 'UPI' },
+            { value: 'bank_transfer', label: 'Bank Transfer' },
+            { value: 'other',         label: 'Other' },
+          ]}
+        />
       </div>
-      <Input label="Date" type="date" value={date} onChange={e => setDate(e.target.value)} />
-      <Input label="Description" value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional note" />
+
+      <Input
+        label="Date"
+        type="date"
+        value={date}
+        onChange={e => setDate(e.target.value)}
+      />
+      <Input
+        label="Description"
+        value={description}
+        onChange={e => setDescription(e.target.value)}
+        placeholder="Optional note"
+      />
       <Toggle checked={isRecurring} onChange={setIsRecurring} label="Recurring monthly" />
+
       <div className="flex gap-3">
         <Button variant="ghost" fullWidth onClick={onClose}>Cancel</Button>
         <Button variant="primary" fullWidth onClick={handleSubmit} loading={loading}>Save</Button>
@@ -379,27 +790,35 @@ function TransactionForm({ txnId, onClose, initialType, prefill }: {
   );
 }
 
-function BudgetsTab() {
-  const [currency] = useSetting('currency', 'INR');
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [budgetCategory, setBudgetCategory] = useState('food');
-  const [budgetLimit, setBudgetLimit] = useState('');
-  const { track } = useAnalytics();
+// ─── Budgets Tab ──────────────────────────────────────────────
 
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
+function BudgetsTab() {
+  const [currency]       = useSetting('currency', 'INR');
+  const [isFormOpen,     setIsFormOpen]     = useState(false);
+  const [budgetCategory, setBudgetCategory] = useState('food');
+  const [budgetLimit,    setBudgetLimit]    = useState('');
+  const { track }        = useAnalytics();
+
+  const now        = new Date();
+  const year       = now.getFullYear();
+  const month      = now.getMonth() + 1;
   const monthStart = dateFmt(startOfMonth(now), 'yyyy-MM-dd');
-  const monthEnd = dateFmt(endOfMonth(now), 'yyyy-MM-dd');
+  const monthEnd   = dateFmt(endOfMonth(now),   'yyyy-MM-dd');
 
   const budgets = useLiveQuery(
-    () => db.budgets.where('[year+month+category]').between([year, month, 'a'], [year, month, 'z'], true, true).toArray(),
+    () => db.budgets
+      .where('[year+month+category]')
+      .between([year, month, 'a'], [year, month, 'z'], true, true)
+      .toArray(),
     [year, month],
     [],
   );
 
   const monthExpenses = useLiveQuery(
-    () => db.transactions.where('date').between(monthStart, monthEnd, true, true).filter(t => t.type === 'expense').toArray(),
+    () => db.transactions
+      .where('date').between(monthStart, monthEnd, true, true)
+      .filter(t => t.type === 'expense')
+      .toArray(),
     [monthStart],
     [],
   );
@@ -413,7 +832,7 @@ function BudgetsTab() {
     const limit = parseFloat(budgetLimit);
     if (!limit) return;
     const existing = budgets?.find(b => b.category === budgetCategory);
-    const now = new Date().toISOString();
+    const now      = new Date().toISOString();
     if (existing?.id) {
       await db.budgets.update(existing.id, { limit, updatedAt: now });
     } else {
@@ -425,38 +844,70 @@ function BudgetsTab() {
     setIsFormOpen(false);
   };
 
-  const categories = ['food', 'groceries', 'shopping', 'transport', 'entertainment', 'fitness', 'healthcare', 'bills', 'subscriptions'];
-
   return (
     <>
       <div className="flex justify-end">
-        <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setIsFormOpen(true)}>Set Budget</Button>
+        <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setIsFormOpen(true)}>
+          Set Budget
+        </Button>
       </div>
 
       {!budgets?.length ? (
-        <EmptyState icon={<Wallet size={24} />} title="No budgets set" subtitle="Set monthly limits per category" action={{ label: 'Set Budget', onClick: () => setIsFormOpen(true) }} />
+        <EmptyState
+          icon={<Wallet size={24} />}
+          title="No budgets set"
+          subtitle="Set monthly limits per category"
+          action={{ label: 'Set Budget', onClick: () => setIsFormOpen(true) }}
+        />
       ) : (
         <div className="flex flex-col gap-2">
           {budgets.map(b => {
             const spent = categorySpending[b.category] ?? 0;
-            const pct = Math.min((spent / b.limit) * 100, 100);
-            const over = spent > b.limit;
+            const pct   = Math.min((spent / b.limit) * 100, 100);
+            const over  = spent > b.limit;
+            const daysInMonth = getDaysInMonth(now);
+            const dayOfMonth  = getDate(now);
+            // Expected spend at this point in month if spending linearly
+            const expectedPct = (dayOfMonth / daysInMonth) * 100;
+            const isAheadOfPace = pct > expectedPct + 10;
+
             return (
               <GlassCard key={b.id} padding="sm" className={over ? 'border-danger/30' : ''}>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-content-primary capitalize">{b.category}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{getCategoryEmoji(b.category)}</span>
+                    <p className="text-sm font-medium text-content-primary">
+                      {getCategoryLabel(b.category)}
+                    </p>
+                    {isAheadOfPace && !over && (
+                      <span className="text-[10px] text-warning bg-warning/10 px-1.5 py-0.5 rounded-full">
+                        ahead of pace
+                      </span>
+                    )}
+                  </div>
                   <div className="text-right">
-                    <span className={`text-sm font-bold ${over ? 'text-danger' : 'text-content-primary'}`}>{formatCurrency(spent, currency)}</span>
+                    <span className={`text-sm font-bold ${over ? 'text-danger' : 'text-content-primary'}`}>
+                      {formatCurrency(spent, currency)}
+                    </span>
                     <span className="text-xs text-content-muted"> / {formatCurrency(b.limit, currency)}</span>
                   </div>
                 </div>
                 <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
                   <div
                     className="h-full rounded-full transition-all"
-                    style={{ width: `${pct}%`, backgroundColor: over ? '#ef4444' : '#7c3aed' }}
+                    style={{
+                      width: `${pct}%`,
+                      backgroundColor: over ? '#ef4444' : pct >= 80 ? '#f59e0b' : '#7c3aed',
+                    }}
                   />
                 </div>
-                {over && <p className="text-xs text-danger mt-1">Over by {formatCurrency(spent - b.limit, currency)}</p>}
+                <div className="flex justify-between mt-1">
+                  <p className="text-[10px] text-content-muted">{Math.round(pct)}% used</p>
+                  {over
+                    ? <p className="text-xs text-danger">Over by {formatCurrency(spent - b.limit, currency)}</p>
+                    : <p className="text-[10px] text-content-muted">{formatCurrency(b.limit - spent, currency)} left</p>
+                  }
+                </div>
               </GlassCard>
             );
           })}
@@ -465,20 +916,29 @@ function BudgetsTab() {
 
       <BottomSheet open={isFormOpen} onClose={() => setIsFormOpen(false)} title="Set Monthly Budget">
         <div className="flex flex-col gap-4">
-          <Select label="Category" value={budgetCategory} onChange={e => setBudgetCategory(e.target.value)} options={categories.map(c => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) }))} />
-          <Input label={`Limit (${currency})`} type="number" inputMode="decimal" value={budgetLimit} onChange={e => setBudgetLimit(e.target.value)} placeholder="5000" autoFocus />
-          <Button variant="primary" onClick={saveBudget} disabled={!budgetLimit}>Save Budget</Button>
+          <Select
+            label="Category"
+            value={budgetCategory}
+            onChange={e => setBudgetCategory(e.target.value)}
+            options={EXPENSE_CATEGORY_OPTIONS.map(c => ({
+              value: c,
+              label: `${getCategoryEmoji(c)}  ${getCategoryLabel(c)}`,
+            }))}
+          />
+          <Input
+            label={`Monthly limit (${currency})`}
+            type="number"
+            inputMode="decimal"
+            value={budgetLimit}
+            onChange={e => setBudgetLimit(e.target.value)}
+            placeholder="5000"
+            autoFocus
+          />
+          <Button variant="primary" onClick={saveBudget} disabled={!budgetLimit}>
+            Save Budget
+          </Button>
         </div>
       </BottomSheet>
     </>
   );
-}
-
-function getCategoryEmoji(cat: string): string {
-  const map: Record<string, string> = {
-    food: '🍔', groceries: '🛒', shopping: '🛍️', travel: '✈️', transport: '🚗',
-    entertainment: '🎬', fitness: '💪', healthcare: '💊', bills: '📋',
-    subscriptions: '📱', other: '💸', salary: '💼', freelance: '💻', investment: '📈',
-  };
-  return map[cat] || '💸';
 }

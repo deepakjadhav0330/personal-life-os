@@ -19,15 +19,21 @@ Deno.serve(async (req) => {
   const user = await validateUser(req, supabase);
   if (!user) return error('Unauthorized', 401);
 
-  // Check profile status — suspended users cannot ingest events
+  // Check profile status — suspended users cannot ingest events.
+  // If the profile lookup itself fails (e.g., transient DB issue) we still
+  // accept the events from a validly authenticated user to avoid silent
+  // data loss. The profile-not-found case returns 404 so the client can
+  // distinguish it from a 403 suspension and retry rather than drop.
   const { data: profile } = await supabase
     .from('profiles')
     .select('status')
     .eq('id', user.id)
     .maybeSingle();
 
-  if (!profile) return error('Profile not found', 403);
-  if (profile.status === 'suspended') return error('Account suspended', 403);
+  if (profile?.status === 'suspended') return error('Account suspended', 403);
+  // No profile row at all — user is authenticated but profile isn't ready yet.
+  // Return 404 so the client retries instead of permanently dropping events.
+  if (profile === null) return error('Profile not found', 404);
 
   let body: { events?: IncomingEvent[] };
   try { body = await req.json(); }

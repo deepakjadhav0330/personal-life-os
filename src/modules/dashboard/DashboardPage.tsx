@@ -8,6 +8,7 @@ import { QuickAddBar } from '../../components/dashboard/QuickAddBar';
 import { NotificationCenter } from '../../components/dashboard/NotificationCenter';
 import { SampleDataBanner, useShouldShowBanner } from '../../components/dashboard/SampleDataBanner';
 import { useSmartNudges } from '../../hooks/useSmartNudges';
+import { useAdminNudges } from '../../hooks/useAdminNudges';
 import { GreetingWidget } from '../../components/widgets/GreetingWidget';
 import { DailySummaryWidget } from '../../components/widgets/DailySummaryWidget';
 import { TaskWidget } from '../../components/widgets/TaskWidget';
@@ -46,8 +47,10 @@ export function DashboardPage() {
   const [dashConfig] = useSetting<DashboardWidgetConfig[]>('dashboardConfig', defaultConfig);
   const location = useLocation();
   const quickAddText: string | undefined = location.state?.quickAdd;
-  const nudges = useSmartNudges();
-  const activeNudgeCount = nudges.length;
+  const nudges      = useSmartNudges();
+  const adminNudges = useAdminNudges();
+  const allNudges   = [...adminNudges, ...nudges]; // admin alerts first
+  const activeNudgeCount = allNudges.length;
   const showBanner = useShouldShowBanner();
 
   // Clear the state so it doesn't persist on subsequent renders
@@ -94,7 +97,7 @@ export function DashboardPage() {
       </div>
 
       {/* Notification center — bell icon opens this via useNotificationStore */}
-      <NotificationCenter nudges={nudges} />
+      <NotificationCenter nudges={allNudges} />
     </div>
   );
 }

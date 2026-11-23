@@ -29,9 +29,28 @@ export function AnalyticsProvider({ children, accessToken, userId }: AnalyticsPr
   }, [accessToken, userId]);
 
   useEffect(() => {
-    const handler = () => { analytics.flush().catch(() => {/* silent */}); };
-    window.addEventListener('online', handler);
-    return () => window.removeEventListener('online', handler);
+    // Flush when connection is restored after being offline
+    const onOnline = () => { analytics.flush().catch(() => {/* silent */}); };
+    window.addEventListener('online', onOnline);
+
+    // Flush when the user switches tabs or minimises — covers the case where
+    // the user adds data and closes the tab before the 2-second debounce fires.
+    const onHide = () => {
+      if (document.visibilityState === 'hidden') {
+        analytics.flush().catch(() => {/* silent */});
+      }
+    };
+    document.addEventListener('visibilitychange', onHide);
+
+    // pagehide fires on mobile browsers when the page is unloaded / backgrounded
+    const onPageHide = () => { analytics.flush().catch(() => {/* silent */}); };
+    window.addEventListener('pagehide', onPageHide);
+
+    return () => {
+      window.removeEventListener('online', onOnline);
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', onPageHide);
+    };
   }, []);
 
   const track = (name: EventName, props?: EventProperties) => {

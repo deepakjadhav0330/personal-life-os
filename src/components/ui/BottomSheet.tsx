@@ -17,10 +17,16 @@ export function BottomSheet({ open, onClose, title, children, className, hideClo
     if (!open) return;
     const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handleKey);
-    document.body.style.overflow = 'hidden';
+
+    // Lock only overflow-Y, not the overflow shorthand.
+    // Clearing the shorthand on a body that has `overflow-x: hidden` in CSS
+    // causes Android Chrome to promote overflow-y to hidden as well,
+    // permanently locking the page scroll after the sheet closes.
+    document.body.style.overflowY = 'hidden';
+
     return () => {
       document.removeEventListener('keydown', handleKey);
-      document.body.style.overflow = '';
+      document.body.style.overflowY = '';
     };
   }, [open, onClose]);
 

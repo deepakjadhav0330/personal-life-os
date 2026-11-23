@@ -15,12 +15,14 @@ export function OTPVerificationPage() {
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const inputRefs  = useRef<(HTMLInputElement | null)[]>([]);
+  const verifiedRef = useRef(false); // prevents the email-guard effect from firing after successful verify
   const email = sessionStorage.getItem('lifeOS_otp_email') ?? '';
 
   useEffect(() => {
-    if (!email) { navigate('/signin', { replace: true }); return; }
-    inputRefs.current[0]?.focus();
+    // Don't redirect if we just verified successfully — email was cleared intentionally
+    if (!email && !verifiedRef.current) { navigate('/signin', { replace: true }); return; }
+    if (email) inputRefs.current[0]?.focus();
   }, [email, navigate]);
 
   // Countdown timer
@@ -83,9 +85,9 @@ export function OTPVerificationPage() {
         return;
       }
 
-      // Navigate to '/' so AuthGate renders and routes correctly.
-      // AuthGate is NOT active at /#/verify-otp — without this navigate
-      // the user stays on the blank OTP page after verification.
+      // Set the verified flag BEFORE clearing sessionStorage so the guard
+      // useEffect doesn't fire navigate('/signin') on the next re-render.
+      verifiedRef.current = true;
       sessionStorage.removeItem('lifeOS_otp_email');
       localStorage.removeItem('lifeOS_pending_registration');
       navigate('/', { replace: true });

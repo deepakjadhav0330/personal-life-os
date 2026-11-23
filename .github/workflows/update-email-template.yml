@@ -7,14 +7,95 @@ jobs:
   update-template:
     runs-on: ubuntu-latest
     steps:
-      - name: Print all auth config keys
+      - name: Push clean Life OS email templates
+        run: |
+          OTP_HTML='<!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>Your Life OS sign-in code</title>
+            <style>
+              body { margin:0; padding:0; background:#06060f; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; color:#f0f0ff; }
+              .container { max-width:480px; margin:40px auto; padding:0 20px; }
+              .card { background:linear-gradient(145deg,rgba(190,170,255,0.09),rgba(130,110,255,0.045)); border:1px solid rgba(200,180,255,0.14); border-top-color:rgba(220,200,255,0.26); border-radius:16px; padding:36px 32px; }
+              .logo { display:flex; align-items:center; gap:12px; margin-bottom:28px; }
+              .logo-icon { width:40px; height:40px; border-radius:12px; background:linear-gradient(135deg,#8b47ff,#6366f1); display:flex; align-items:center; justify-content:center; }
+              .logo-text { font-size:18px; font-weight:700; color:#f0f0ff; }
+              .logo-sub { font-size:11px; color:#606080; }
+              h1 { font-size:22px; font-weight:700; color:#f0f0ff; margin:0 0 8px; }
+              .subtitle { font-size:14px; color:#a0a0c0; margin:0 0 28px; line-height:1.5; }
+              .otp-box { background:rgba(124,58,237,0.12); border:1px solid rgba(124,58,237,0.3); border-radius:12px; padding:20px; text-align:center; margin-bottom:24px; }
+              .otp-code { font-size:36px; font-weight:800; letter-spacing:10px; color:#f0f0ff; font-variant-numeric:tabular-nums; }
+              .otp-expiry { font-size:12px; color:#606080; margin-top:8px; }
+              .footer { font-size:12px; color:#404060; margin-top:28px; line-height:1.6; }
+              .footer a { color:#7c3aed; text-decoration:none; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="card">
+                <div class="logo">
+                  <div class="logo-icon">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  </div>
+                  <div>
+                    <div class="logo-text">Life OS</div>
+                    <div class="logo-sub">Personal Dashboard</div>
+                  </div>
+                </div>
+                <h1>Your sign-in code</h1>
+                <p class="subtitle">Use this code to sign in to Life OS. It expires in 10 minutes.</p>
+                <div class="otp-box">
+                  <div class="otp-code">{{ .Token }}</div>
+                  <div class="otp-expiry">Expires in 10 minutes</div>
+                </div>
+                <p class="footer">
+                  If you did not request this code, you can safely ignore this email.<br/>
+                  This is an automated message from <a href="{{ .SiteURL }}">Life OS</a>.
+                </p>
+              </div>
+            </div>
+          </body>
+          </html>'
+
+          OTP_HTML_ESCAPED=$(echo "$OTP_HTML" | python3 -c "import sys, json; print(json.dumps(sys.stdin.read()))")
+
+          PAYLOAD=$(python3 -c "
+          import json
+          html = $OTP_HTML_ESCAPED
+          print(json.dumps({
+            'smtp_sender_name': 'Life OS',
+            'mailer_subjects_magic_link': 'Your Life OS sign-in code',
+            'mailer_templates_magic_link_content': html,
+          }))
+          ")
+
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            -X PATCH \
+            "https://api.supabase.com/v1/projects/${{ secrets.SUPABASE_PROJECT_ID }}/config/auth" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ACCESS_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS:" | cut -d: -f2)
+          echo "HTTP Status: $HTTP_STATUS"
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Failed to update email template"
+            exit 1
+          fi
+
+          echo "Done. Sender: Life OS | Subject: Your Life OS sign-in code"
+
+      - name: Verify
         run: |
           curl -s \
             "https://api.supabase.com/v1/projects/${{ secrets.SUPABASE_PROJECT_ID }}/config/auth" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ACCESS_TOKEN }}" \
             | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-for k, v in sorted(d.items()):
-    print(f'{k} = {str(v)[:120]}')
-"
+          import sys, json
+          d = json.load(sys.stdin)
+          print('smtp_sender_name:', d.get('smtp_sender_name'))
+          print('subject:', d.get('mailer_subjects_magic_link'))
+          "

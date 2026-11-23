@@ -98,11 +98,11 @@ function SubscriptionsSection() {
   const enriched = useLiveQuery(async () => {
     if (!parents?.length) return [];
     return Promise.all(parents.map(async parent => {
-      const children = await db.transactions
-        .where('recurringParentId').equals(parent.id!)
+      const allChildren = await db.transactions
+        .filter(t => t.recurringParentId === parent.id && !t.isRecurring)
         .sortBy('date');
-      const lastOccurrence = children.length > 0
-        ? children[children.length - 1]
+      const lastOccurrence = allChildren.length > 0
+        ? allChildren[allChildren.length - 1]
         : parent;
       const nextDate = nextPaymentDate(lastOccurrence.date, parent.recurringFrequency);
       const daysUntil = differenceInDays(nextDate, parseISO(today));
@@ -225,10 +225,10 @@ function UpcomingBillsSection() {
   const upcoming = useLiveQuery(async () => {
     if (!parents?.length) return [];
     const results = await Promise.all(parents.map(async parent => {
-      const children = await db.transactions
-        .where('recurringParentId').equals(parent.id!)
+      const allChildren = await db.transactions
+        .filter(t => t.recurringParentId === parent.id && !t.isRecurring)
         .sortBy('date');
-      const lastOccurrence = children.length > 0 ? children[children.length - 1] : parent;
+      const lastOccurrence = allChildren.length > 0 ? allChildren[allChildren.length - 1] : parent;
       const nextDate = nextPaymentDate(lastOccurrence.date, parent.recurringFrequency);
       const nextStr  = dateFmt(nextDate, 'yyyy-MM-dd');
       return { ...parent, nextDate: nextStr, daysUntil: differenceInDays(nextDate, parseISO(today)) };

@@ -169,45 +169,45 @@ function MoreDrawer({
         onClick={onClose}
       />
 
-      {/* Sheet */}
-      <div className="relative glass-elevated rounded-t-[20px] shadow-glass animate-slide-up pb-safe">
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-1">
+      {/* Sheet — flex column so handle stays pinned while grid scrolls */}
+      <div className="relative glass-elevated rounded-t-[20px] shadow-glass animate-slide-up pb-safe max-h-[88dvh] flex flex-col">
+        {/* Drag handle — always visible at top */}
+        <div className="flex justify-center pt-3 pb-1 shrink-0" onClick={onClose}>
           <div className="w-10 h-1 rounded-full bg-white/20" />
         </div>
 
         {/* Header */}
-        <div className="px-4 py-3 border-b border-white/[0.06]">
+        <div className="px-4 py-3 border-b border-white/[0.06] shrink-0">
           <p className="text-base font-semibold text-content-primary">More</p>
         </div>
 
-        {/* 2 × 3 module grid */}
-        <div className="p-4">
-          <div className="grid grid-cols-2 gap-3">
+        {/* 3-column module grid — scrollable if many items */}
+        <div className="p-4 overflow-y-auto">
+          <div className="grid grid-cols-3 gap-2">
             {displayModules.map(mod => (
               <button
                 key={mod.path}
                 onClick={() => goTo(mod.path)}
-                className="flex flex-col items-center gap-3 glass-1 hover:glass-2 rounded-card py-5 px-3 transition-all duration-200 active:scale-95"
+                className="flex flex-col items-center gap-2 glass-1 hover:glass-2 rounded-card py-4 px-2 transition-all duration-200 active:scale-95"
               >
                 {/* Icon */}
                 <div
-                  className="w-13 h-13 rounded-2xl flex items-center justify-center"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center"
                   style={{
-                    width: 52,
-                    height: 52,
+                    width: 40,
+                    height: 40,
                     background: `${mod.color}1e`,
                     border: `1px solid ${mod.color}44`,
                     borderTopColor: `${mod.color}70`,
                   }}
                 >
-                  <mod.icon size={24} style={{ color: mod.color }} />
+                  <mod.icon size={20} style={{ color: mod.color }} />
                 </div>
 
                 {/* Label + stat */}
                 <div className="text-center">
-                  <p className="text-sm font-semibold text-content-primary">{mod.label}</p>
-                  <p className="text-[11px] text-content-muted mt-0.5 leading-tight">
+                  <p className="text-xs font-semibold text-content-primary truncate w-full">{mod.label}</p>
+                  <p className="text-[10px] text-content-muted mt-0.5 leading-tight line-clamp-1">
                     {stats[mod.path]}
                   </p>
                 </div>

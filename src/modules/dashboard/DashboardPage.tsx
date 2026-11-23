@@ -47,39 +47,94 @@ const defaultConfig: DashboardWidgetConfig[] = [
 ];
 
 export function DashboardPage() {
-  const [dashConfig] = useSetting<DashboardWidgetConfig[]>('dashboardConfig', defaultConfig);
+  const [dashConfig, setDashConfig] = useSetting<DashboardWidgetConfig[]>('dashboardConfig', defaultConfig);
   const location = useLocation();
   const quickAddText: string | undefined = location.state?.quickAdd;
   const nudges      = useSmartNudges();
   const adminNudges = useAdminNudges();
-  const allNudges   = [...adminNudges, ...nudges]; // admin alerts first
+  const allNudges   = [...adminNudges, ...nudges];
   const activeNudgeCount = allNudges.length;
   const showBanner = useShouldShowBanner();
 
-  // Clear the state so it doesn't persist on subsequent renders
   useEffect(() => {
-    if (quickAddText) {
-      window.history.replaceState({}, '');
-    }
+    if (quickAddText) window.history.replaceState({}, '');
   }, [quickAddText]);
 
-  // Check whether the user has any real data yet
-  const hasData = useLiveQuery(async () => {
-    const tasks   = await db.tasks.count();
-    const habits  = await db.habits.count();
-    const goals   = await db.goals.count();
-    return tasks > 0 || habits > 0 || goals > 0;
-  }, [], null); // null = still loading
+  // ── Auto-inject newly added widgets into existing saved configs ──────
+  // Runs once on mount. If stored config is missing any widget from
+  // defaultConfig, we append it and persist — so Settings shows the full
+  // list immediately without the user needing to do anything.
+  useEffect(() => {
+    if (!dashConfig?.length) return;
+    const storedIds = new Set(dashConfig.map(w => w.widgetId));
+    const missing   = defaultConfig.filter(w => !storedIds.has(w.widgetId));
+    if (missing.length > 0) {
+      const merged = [
+        ...dashConfig,
+        ...missing.map((w, i) => ({ ...w, order: dashConfig.length + i })),
+      ];
+      setDashConfig(merged);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally runs once — deps would re-trigger on every save
 
-  // Merge stored config with defaultConfig so any newly introduced widgets
-  // appear automatically for existing users who already have a saved config.
-  const storedConfig  = dashConfig?.length ? dashConfig : defaultConfig;
-  const storedIds     = new Set(storedConfig.map(w => w.widgetId));
+  // ── Data-presence check for smart widget ordering ───────────────────
+  // Lightweight count queries — no full data fetch.
+  const widgetData = useLiveQuery(async () => {
+    const now        = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const [tasks, habits, financeExpenses, goals, reminders] = await Promise.all([
+      db.tasks.count(),
+      db.habits.filter(h => !!h.isActive).count(),
+      db.transactions.where('date').aboveOrEqual(monthStart).filter(t => t.type === 'expense').count(),
+      db.goals.where('status').equals('active').count(),
+      db.reminders.where('status').equals('pending').count(),
+    ]);
+    return { tasks, habits, finance: financeExpenses > 0, goals, reminders };
+  }, [], null);
+
+  // Check whether the user has any real data yet (for welcome vs full dashboard)
+  const hasData = useLiveQuery(async () => {
+    const tasks  = await db.tasks.count();
+    const habits = await db.habits.count();
+    const goals  = await db.goals.count();
+    return tasks > 0 || habits > 0 || goals > 0;
+  }, [], null);
+
+  // Determine whether a widget has meaningful content to display.
+  // Widgets in ALWAYS_SHOW are considered to always have content.
+  const ALWAYS_SHOW = new Set(['greeting', 'daily-summary', 'quick-stats', 'quick-actions']);
+  function widgetHasData(widgetId: string): boolean {
+    if (ALWAYS_SHOW.has(widgetId)) return true;
+    if (!widgetData) return true; // still loading — don't jump widgets around
+    switch (widgetId) {
+      case 'tasks':         return (widgetData.tasks   ?? 0) > 0;
+      case 'habits':        return (widgetData.habits  ?? 0) > 0;
+      case 'finance-pulse': return widgetData.finance  ?? false;
+      case 'goals':         return (widgetData.goals   ?? 0) > 0;
+      case 'reminders':     return (widgetData.reminders ?? 0) > 0;
+      default:              return true;
+    }
+  }
+
+  // Build the display config: merge stored + defaults, then smart-sort.
+  // Order: user preference within each tier, empty widgets pushed to bottom.
+  const storedConfig   = dashConfig?.length ? dashConfig : defaultConfig;
+  const storedIds      = new Set(storedConfig.map(w => w.widgetId));
   const missingWidgets = defaultConfig
     .filter(w => !storedIds.has(w.widgetId))
     .map((w, i) => ({ ...w, order: storedConfig.length + i }));
-  const config        = [...storedConfig, ...missingWidgets];
-  const visibleWidgets = config.filter(w => w.visible).sort((a, b) => a.order - b.order);
+  const fullConfig = [...storedConfig, ...missingWidgets];
+
+  const visibleWidgets = fullConfig
+    .filter(w => w.visible)
+    .sort((a, b) => {
+      const aEmpty = !widgetHasData(a.widgetId);
+      const bEmpty = !widgetHasData(b.widgetId);
+      // Empty widgets sink to the bottom, maintaining user order within each tier
+      if (aEmpty !== bEmpty) return aEmpty ? 1 : -1;
+      return a.order - b.order;
+    });
 
   return (
     <div className="min-h-screen-dvh">

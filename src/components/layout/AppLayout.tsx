@@ -16,6 +16,7 @@ const PATH_MODULE_MAP: Record<string, string> = {
   '/learning':      'learning',
   '/settings':      'settings',
   '/intelligence':  'intelligence',
+  '/review':        'review',
 };
 
 export function AppLayout() {

@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, CheckSquare, Dumbbell, DollarSign,
-  Flame, BookOpen, Target, CalendarDays, Settings, GraduationCap, Zap, ShieldCheck, Brain,
+  Flame, BookOpen, Target, CalendarDays, Settings, GraduationCap,
+  Zap, ShieldCheck, Brain, CalendarCheck2,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../auth/AuthContext';
@@ -25,7 +26,8 @@ const navGroups = [
       { path: '/journal',  label: 'Journal',      icon: BookOpen },
       { path: '/goals',    label: 'Goals',        icon: Target },
       { path: '/learning', label: 'Learning',     icon: GraduationCap },
-      { path: '/calendar', label: 'Calendar',     icon: CalendarDays },
+      { path: '/calendar',     label: 'Calendar',     icon: CalendarDays },
+      { path: '/review',       label: 'Weekly Review',icon: CalendarCheck2 },
       { path: '/intelligence', label: 'Intelligence', icon: Brain },
     ],
   },

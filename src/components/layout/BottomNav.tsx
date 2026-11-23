@@ -3,7 +3,8 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   LayoutDashboard, CheckSquare, Dumbbell, DollarSign, Grid3X3,
-  Flame, BookOpen, Target, CalendarDays, Settings, GraduationCap, ShieldCheck, Brain,
+  Flame, BookOpen, Target, CalendarDays, Settings, GraduationCap,
+  ShieldCheck, Brain, CalendarCheck2,
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { db } from '../../db/database';
@@ -137,6 +138,7 @@ function MoreDrawer({
     '/learning':     learningMins ? `${formatMinutes(learningMins ?? 0)} this week` : 'Books & courses',
     '/calendar':     upcomingReminders ? `${upcomingReminders} upcoming` : 'Events & reminders',
     '/intelligence': 'Your personal insights',
+    '/review':       'Weekly review & reports',
     '/settings':     'Preferences',
     '/admin':        'User management',
   };
@@ -144,6 +146,7 @@ function MoreDrawer({
   const baseModules = [
     { path: '/habits',       label: 'Habits',       icon: Flame,          color: '#f59e0b' },
     { path: '/journal',      label: 'Journal',      icon: BookOpen,       color: '#8b5cf6' },
+    { path: '/review',       label: 'Weekly Review',icon: CalendarCheck2, color: '#22c55e' },
     { path: '/goals',        label: 'Goals',        icon: Target,         color: '#22c55e' },
     { path: '/learning',     label: 'Learning',     icon: GraduationCap,  color: '#3b82f6' },
     { path: '/calendar',     label: 'Calendar',     icon: CalendarDays,   color: '#06b6d4' },

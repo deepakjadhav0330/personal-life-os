@@ -122,8 +122,7 @@ async function checkRecurringTransactions() {
           if (nextStr > today) break;
 
           const exists = await db.transactions
-            .where('recurringParentId').equals(txn.id!)
-            .and(t => t.date === nextStr)
+            .filter(t => t.recurringParentId === txn.id && t.date === nextStr)
             .count();
 
           if (!exists) {

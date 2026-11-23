@@ -9,7 +9,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import {
   format, parseISO, startOfWeek, endOfWeek, subWeeks,
   startOfMonth, endOfMonth, subMonths, getYear, getMonth,
-  differenceInDays,
+  differenceInDays, addDays,
 } from 'date-fns';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
@@ -18,6 +18,7 @@ import { useSetting } from '../../hooks/useSetting';
 import { formatCurrency, formatMinutes } from '../../utils/format';
 import { toast } from '../../stores/useToastStore';
 import type { JournalMood } from '../../db/schema';
+import { isHabitScheduledOn } from '../../utils/habits';
 import {
   ChevronLeft, ChevronRight, Flame, CheckSquare, DollarSign,
   Dumbbell, GraduationCap, Target, TrendingUp, TrendingDown,
@@ -151,22 +152,37 @@ function WeekStats({ weekStart }: { weekStart: string }) {
       db.learningSessions.where('date').between(weekStart, effectiveEnd, true, true).toArray(),
     ]);
 
-    const daysElapsed = Math.min(
-      differenceInDays(parseISO(effectiveEnd), parseISO(weekStart)) + 1, 7,
-    );
-    const totalScheduled = activeHabits.length * daysElapsed;
-    const habitRate = totalScheduled > 0
-      ? Math.round((habitComps.length / totalScheduled) * 100) : 0;
+    // ── Habits — respect actual per-habit schedule ────────────
+    // Walk each day × each habit; only count slots where the habit
+    // was actually scheduled (handles daily/weekly/specific-days).
+    let habitScheduled = 0;
+    let habitCompleted = 0;
+    let cursor = parseISO(weekStart);
+    while (format(cursor, 'yyyy-MM-dd') <= effectiveEnd) {
+      const dayStr = format(cursor, 'yyyy-MM-dd');
+      for (const habit of activeHabits) {
+        if (!isHabitScheduledOn(habit, cursor)) continue;
+        habitScheduled++;
+        if (habitComps.some(c => c.habitId === habit.id && c.date === dayStr)) {
+          habitCompleted++;
+        }
+      }
+      cursor = addDays(cursor, 1);
+    }
+    const habitRate = habitScheduled === 0 ? 0
+      : Math.min(Math.round((habitCompleted / habitScheduled) * 100), 100);
 
     const tasksCompleted = allTasks.filter(
       t => t.status === 'completed' && t.completedAt && t.completedAt.slice(0, 10) >= weekStart && t.completedAt.slice(0, 10) <= effectiveEnd,
     ).length;
+    // Overdue relative to the WEEK being reviewed, not today.
+    // A task due after effectiveEnd is not yet overdue for this week.
     const tasksOverdue = allTasks.filter(
-      t => t.status === 'pending' && t.dueDate && t.dueDate < today,
+      t => t.status === 'pending' && t.dueDate && t.dueDate < effectiveEnd,
     ).length;
 
-    const financeThis = thisWeekExpenses.reduce((s, t) => s + t.amount, 0);
-    const financePrev = prevWeekExpenses.reduce((s, t) => s + t.amount, 0);
+    const financeThis  = thisWeekExpenses.reduce((s, t) => s + t.amount, 0);
+    const financePrev  = prevWeekExpenses.reduce((s, t) => s + t.amount, 0);
     const learningMins = learningSessions.reduce((s, l) => s + l.durationMinutes, 0);
 
     return {
@@ -174,19 +190,22 @@ function WeekStats({ weekStart }: { weekStart: string }) {
       tasksCompleted, tasksOverdue,
       financeThis, financePrev,
       workouts, milestones, learningMins,
-      daysElapsed,
     };
   }, [weekStart, effectiveEnd], null);
 
-  // Check if a review already exists for this week
-  const existingReview = useLiveQuery(
-    () => db.journalEntries
+  // Load the most-recently-updated review for this week.
+  // If duplicates exist (from an earlier bug), use the newest and ignore others.
+  const existingReview = useLiveQuery(async () => {
+    const all = await db.journalEntries
       .where('type').equals('weekly-review' as any)
       .filter(e => e.date === weekStart)
-      .first(),
-    [weekStart],
-    undefined,
-  );
+      .toArray();
+    if (all.length === 0) return null;
+    // Sort by updatedAt descending, return the most recent
+    return [...all].sort((a, b) =>
+      (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''),
+    )[0];
+  }, [weekStart], undefined);
 
   if (!stats) {
     return (
@@ -305,19 +324,33 @@ interface StatsSnapshot {
   learningMins: number;
 }
 
+interface ExistingAnswers {
+  wentWell?:         string;
+  improved?:         string;
+  learned?:          string;
+  tomorrowPriority?: string;
+}
+
 function ReflectionForm({
   weekStart,
   statsSnapshot,
+  existingId,
+  existingAnswers,
+  existingMood,
 }: {
-  weekStart: string;
-  statsSnapshot: StatsSnapshot;
+  weekStart:        string;
+  statsSnapshot:    StatsSnapshot;
+  existingId?:      number;       // set when editing an existing review
+  existingAnswers?: ExistingAnswers;
+  existingMood?:    JournalMood;
 }) {
-  const [wentWell,   setWentWell]   = useState('');
-  const [improved,   setImproved]   = useState('');
-  const [learned,    setLearned]    = useState('');
-  const [focus,      setFocus]      = useState('');
-  const [mood,       setMood]       = useState<JournalMood | null>(null);
-  const [saving,     setSaving]     = useState(false);
+  // Pre-fill from existing answers when editing
+  const [wentWell, setWentWell] = useState(existingAnswers?.wentWell         ?? '');
+  const [improved, setImproved] = useState(existingAnswers?.improved         ?? '');
+  const [learned,  setLearned]  = useState(existingAnswers?.learned          ?? '');
+  const [focus,    setFocus]    = useState(existingAnswers?.tomorrowPriority ?? '');
+  const [mood,     setMood]     = useState<JournalMood | null>(existingMood ?? null);
+  const [saving,   setSaving]   = useState(false);
 
   const saveReview = async () => {
     if (!wentWell.trim() && !improved.trim() && !learned.trim() && !focus.trim()) {
@@ -327,28 +360,44 @@ function ReflectionForm({
     setSaving(true);
     try {
       const now = new Date().toISOString();
-      await db.journalEntries.add({
-        date: weekStart,
-        type: 'weekly-review' as any,
-        mood: mood ?? undefined,
-        templateAnswers: {
-          wentWell:        wentWell.trim(),
-          improved:        improved.trim(),
-          learned:         learned.trim(),
-          tomorrowPriority: focus.trim(),
-        },
-        freeText: JSON.stringify({
-          habitRate:     statsSnapshot.habitRate,
-          tasksCompleted: statsSnapshot.tasksCompleted,
-          financeThis:   statsSnapshot.financeThis,
-          workouts:      statsSnapshot.workouts,
-          learningMins:  statsSnapshot.learningMins,
-        }),
-        wordCount: [wentWell, improved, learned, focus].join(' ').trim().split(/\s+/).filter(Boolean).length,
-        createdAt: now,
-        updatedAt: now,
-      });
-      toast.success('Review saved!');
+      const templateAnswers = {
+        wentWell:         wentWell.trim(),
+        improved:         improved.trim(),
+        learned:          learned.trim(),
+        tomorrowPriority: focus.trim(),
+      };
+      const wordCount = [wentWell, improved, learned, focus]
+        .join(' ').trim().split(/\s+/).filter(Boolean).length;
+
+      if (existingId) {
+        // UPDATE — preserve the original stats snapshot, only update user answers
+        await db.journalEntries.update(existingId, {
+          mood:            mood ?? undefined,
+          templateAnswers,
+          wordCount,
+          updatedAt:       now,
+        });
+        toast.success('Review updated!');
+      } else {
+        // INSERT — new review for this week
+        await db.journalEntries.add({
+          date:  weekStart,
+          type:  'weekly-review' as any,
+          mood:  mood ?? undefined,
+          templateAnswers,
+          freeText: JSON.stringify({
+            habitRate:      statsSnapshot.habitRate,
+            tasksCompleted: statsSnapshot.tasksCompleted,
+            financeThis:    statsSnapshot.financeThis,
+            workouts:       statsSnapshot.workouts,
+            learningMins:   statsSnapshot.learningMins,
+          }),
+          wordCount,
+          createdAt: now,
+          updatedAt: now,
+        });
+        toast.success('Review saved!');
+      }
     } catch {
       toast.error('Could not save review — please try again.');
     } finally {
@@ -446,6 +495,9 @@ function SavedReview({ review, weekStart }: { review: any; weekStart: string }) 
       <ReflectionForm
         weekStart={weekStart}
         statsSnapshot={JSON.parse(review.freeText ?? '{}')}
+        existingId={review.id}
+        existingAnswers={review.templateAnswers}
+        existingMood={review.mood}
       />
     );
   }

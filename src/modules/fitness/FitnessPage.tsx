@@ -3,15 +3,15 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useLocation } from 'react-router-dom';
 import { db } from '../../db/database';
 import { PageHeader } from '../../components/layout/PageHeader';
-import { GlassCard, Button, Tabs, EmptyState, BottomSheet, ProgressBar } from '../../components/ui';
+import { GlassCard, Button, Tabs, EmptyState, BottomSheet, ProgressBar, Modal } from '../../components/ui';
 import { useAnalytics } from '../../analytics/AnalyticsContext';
+import { useInterval } from '../../hooks/useInterval';
 import { toast } from '../../stores/useToastStore';
 import { todayStr, formatDate, getDaysAgo } from '../../utils/dates';
 import { useSetting } from '../../hooks/useSetting';
 import { Input, Select } from '../../components/ui';
 import {
-  Scale, Dumbbell, Utensils, BarChart3, Plus, TrendingDown, TrendingUp, Minus,
-
+  Scale, Dumbbell, Utensils, BarChart3, Plus, TrendingDown, TrendingUp, Minus, X,
 } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer
@@ -191,45 +191,94 @@ function BodyTab() {
 
 // ─── Workouts Tab ─────────────────────────────────────────────
 function WorkoutsTab() {
-  const [isStarting, setIsStarting] = useState(false);
-  const [workoutName, setWorkoutName] = useState('');
-  const { track } = useAnalytics();
+  const [isStarting,       setIsStarting]       = useState(false);
+  const [workoutName,      setWorkoutName]       = useState('');
+  const [trackingOpen,     setTrackingOpen]      = useState(false);
+  const [currentWorkoutId, setCurrentWorkoutId]  = useState<number | null>(null);
 
-  const workouts = useLiveQuery(
-    () => db.workouts.where('status').equals('completed').reverse().sortBy('date').then(r => r.slice(0, 20)),
+  // Show BOTH active and completed workouts
+  const allWorkouts = useLiveQuery(
+    () => db.workouts.orderBy('startedAt').reverse().limit(21).toArray(),
     [], [],
   );
 
+  const activeWorkout    = allWorkouts?.find(w => w.status === 'active');
+  const completedWorkouts = (allWorkouts ?? []).filter(w => w.status === 'completed').slice(0, 20);
+
   const startWorkout = async () => {
+    if (activeWorkout) {
+      toast.error('Finish your current workout first.');
+      setIsStarting(false);
+      return;
+    }
     const name = workoutName.trim() || 'Workout';
-    await db.workouts.add({
-      name, date: todayStr(), startedAt: new Date().toISOString(),
-      status: 'active',
+    const id = await db.workouts.add({
+      name, date: todayStr(), startedAt: new Date().toISOString(), status: 'active',
     });
-    track('workout_logged', { exercise_count: 0, duration_minutes: 0 });
-    toast.success(`${name} started!`);
+    setWorkoutName('');
     setIsStarting(false);
+    setCurrentWorkoutId(id as number);
+    setTrackingOpen(true);
   };
+
+  // Use locally-created ID first; fall back to any active workout from DB
+  const workoutIdForSheet = currentWorkoutId ?? activeWorkout?.id ?? null;
 
   return (
     <>
       <div className="flex justify-end">
-        <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setIsStarting(true)}>
-          Start Workout
+        <Button
+          variant="primary"
+          size="sm"
+          leftIcon={activeWorkout ? <Dumbbell size={14} /> : <Plus size={14} />}
+          onClick={() => activeWorkout ? setTrackingOpen(true) : setIsStarting(true)}
+        >
+          {activeWorkout ? 'Continue Workout' : 'Start Workout'}
         </Button>
       </div>
 
-      {!workouts?.length ? (
-        <EmptyState icon={<Dumbbell size={24} />} title="No workouts logged yet" subtitle="Start a workout to track your progress" action={{ label: 'Start Now', onClick: () => setIsStarting(true) }} />
+      {/* Active workout banner — appears when a session is in progress */}
+      {activeWorkout && (
+        <GlassCard variant="accent" className="border-accent/40">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl accent-gradient flex items-center justify-center shrink-0">
+              <Dumbbell size={16} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-content-primary">{activeWorkout.name}</p>
+              <p className="text-xs text-accent">Session in progress</p>
+            </div>
+            <Button variant="primary" size="sm" onClick={() => setTrackingOpen(true)}>
+              Continue
+            </Button>
+          </div>
+        </GlassCard>
+      )}
+
+      {/* Completed workouts history */}
+      {!completedWorkouts.length && !activeWorkout ? (
+        <EmptyState
+          icon={<Dumbbell size={24} />}
+          title="No workouts logged yet"
+          subtitle="Start a workout to track your exercises and sets"
+          action={{ label: 'Start Now', onClick: () => setIsStarting(true) }}
+        />
       ) : (
         <div className="flex flex-col gap-2">
-          {workouts.map(w => <WorkoutCard key={w.id} workout={w} />)}
+          {completedWorkouts.map(w => <WorkoutCard key={w.id} workout={w} />)}
         </div>
       )}
 
+      {/* Start workout sheet */}
       <BottomSheet open={isStarting} onClose={() => setIsStarting(false)} title="Start Workout">
         <div className="flex flex-col gap-4">
-          <Input label="Workout Name" value={workoutName} onChange={e => setWorkoutName(e.target.value)} placeholder="e.g. Push Day" autoFocus />
+          <Input
+            label="Workout Name"
+            value={workoutName}
+            onChange={e => setWorkoutName(e.target.value)}
+            placeholder="e.g. Push Day"
+            autoFocus
+          />
           <div className="grid grid-cols-2 gap-2">
             {['Push Day', 'Pull Day', 'Leg Day', 'Full Body', 'Cardio', 'Core'].map(template => (
               <button
@@ -244,6 +293,15 @@ function WorkoutsTab() {
           <Button variant="primary" onClick={startWorkout}>Start Session</Button>
         </div>
       </BottomSheet>
+
+      {/* Active workout tracking sheet */}
+      {workoutIdForSheet && (
+        <ActiveWorkoutSheet
+          workoutId={workoutIdForSheet}
+          open={trackingOpen}
+          onClose={() => { setTrackingOpen(false); setCurrentWorkoutId(null); }}
+        />
+      )}
     </>
   );
 }
@@ -266,6 +324,296 @@ function WorkoutCard({ workout }: { workout: any }) {
         </div>
       </div>
     </GlassCard>
+  );
+}
+
+// ─── Set row — inline weight/reps editor ─────────────────────
+function SetRow({ set, onDelete }: { set: any; onDelete: () => void }) {
+  const [weight, setWeight] = useState(String(set.weight ?? 0));
+  const [reps,   setReps]   = useState(String(set.reps   ?? 0));
+
+  const save = () => {
+    db.workoutSets.update(set.id!, {
+      weight: parseFloat(weight) || 0,
+      reps:   parseInt(reps,  10) || 0,
+    }).catch(() => {});
+  };
+
+  return (
+    <div className="flex items-center gap-2 py-1.5 border-b border-white/[0.04] last:border-0">
+      <span className="text-xs text-content-muted w-6 text-center shrink-0">{set.setNumber}</span>
+      <input
+        type="number" inputMode="decimal"
+        value={weight}
+        onChange={e => setWeight(e.target.value)}
+        onBlur={save}
+        className="glass-input rounded-input text-center text-sm font-semibold w-16 h-9 px-1"
+        placeholder="0"
+        aria-label={`Set ${set.setNumber} weight in kg`}
+      />
+      <span className="text-xs text-content-muted">kg ×</span>
+      <input
+        type="number" inputMode="numeric"
+        value={reps}
+        onChange={e => setReps(e.target.value)}
+        onBlur={save}
+        className="glass-input rounded-input text-center text-sm font-semibold w-14 h-9 px-1"
+        placeholder="0"
+        aria-label={`Set ${set.setNumber} reps`}
+      />
+      <span className="text-xs text-content-muted flex-1">reps</span>
+      <button
+        onClick={onDelete}
+        aria-label="Delete set"
+        className="text-content-muted hover:text-danger transition-colors p-1"
+      >
+        <X size={13} />
+      </button>
+    </div>
+  );
+}
+
+// ─── Exercise picker ──────────────────────────────────────────
+function ExercisePickerSheet({
+  workoutId, open, onClose,
+}: { workoutId: number; open: boolean; onClose: () => void }) {
+  const [query, setQuery] = useState('');
+
+  const exercises = useLiveQuery(
+    () => query.length >= 1
+      ? db.exercises.filter(e => e.name.toLowerCase().includes(query.toLowerCase())).toArray()
+      : db.exercises.orderBy('name').limit(30).toArray(),
+    [query], [],
+  );
+
+  const addExercise = async (exerciseId: number) => {
+    const existing = await db.workoutSets
+      .where('workoutId').equals(workoutId)
+      .filter(s => s.exerciseId === exerciseId)
+      .count();
+    if (existing > 0) { toast.error('Exercise already in this workout'); return; }
+    await db.workoutSets.add({
+      workoutId, exerciseId,
+      setNumber: 1, weight: 0, reps: 8,
+      isCompleted: false,
+      createdAt: new Date().toISOString(),
+    });
+    setQuery('');
+    onClose();
+  };
+
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Add Exercise" snapPoints>
+      <div className="flex flex-col gap-3">
+        <Input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search exercises (bench press, squat…)"
+          autoFocus
+        />
+        <div className="flex flex-col gap-1 overflow-y-auto" style={{ maxHeight: '55dvh' }}>
+          {(exercises ?? []).length === 0 && query.length > 0 && (
+            <p className="text-sm text-content-muted text-center py-6">No exercises found</p>
+          )}
+          {(exercises ?? []).map(ex => (
+            <button
+              key={ex.id}
+              onClick={() => addExercise(ex.id!)}
+              className="flex items-center gap-3 p-3 glass-1 hover:glass-2 rounded-card text-left transition-all active:scale-[0.98]"
+            >
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-content-primary">{ex.name}</p>
+                <p className="text-[11px] text-content-muted capitalize">
+                  {ex.primaryMuscle} · {ex.type}
+                </p>
+              </div>
+              <Plus size={14} className="text-accent shrink-0" />
+            </button>
+          ))}
+        </div>
+      </div>
+    </BottomSheet>
+  );
+}
+
+// ─── Active workout tracking sheet ───────────────────────────
+function ActiveWorkoutSheet({
+  workoutId, open, onClose,
+}: { workoutId: number; open: boolean; onClose: () => void }) {
+  const { track } = useAnalytics();
+  const [pickerOpen,    setPickerOpen]    = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [elapsed,       setElapsed]       = useState(0);
+
+  const data = useLiveQuery(async () => {
+    const workout = await db.workouts.get(workoutId);
+    if (!workout) return null;
+    const sets        = await db.workoutSets.where('workoutId').equals(workoutId).toArray();
+    const exerciseIds = [...new Set(sets.map(s => s.exerciseId))];
+    const exRecords   = await Promise.all(exerciseIds.map(id => db.exercises.get(id)));
+    return {
+      workout,
+      exercises: exerciseIds.map((id, i) => ({
+        exercise: exRecords[i],
+        sets: sets
+          .filter(s => s.exerciseId === id)
+          .sort((a, b) => a.setNumber - b.setNumber),
+      })).filter(g => !!g.exercise),
+    };
+  }, [workoutId], null);
+
+  // Live timer
+  useInterval(() => {
+    if (data?.workout?.startedAt) {
+      setElapsed(Math.floor(
+        (Date.now() - new Date(data.workout.startedAt).getTime()) / 1000,
+      ));
+    }
+  }, 1000);
+
+  const addSet = async (exerciseId: number) => {
+    const existing = await db.workoutSets
+      .where('workoutId').equals(workoutId)
+      .filter(s => s.exerciseId === exerciseId)
+      .toArray();
+    const last = existing[existing.length - 1];
+    await db.workoutSets.add({
+      workoutId, exerciseId,
+      setNumber:   existing.length + 1,
+      weight:      last?.weight ?? 0,
+      reps:        last?.reps   ?? 8,
+      isCompleted: false,
+      createdAt:   new Date().toISOString(),
+    });
+  };
+
+  const deleteSet = async (setId: number, exerciseId: number) => {
+    await db.workoutSets.delete(setId);
+    // Renumber remaining sets for this exercise
+    const remaining = (await db.workoutSets
+      .where('workoutId').equals(workoutId)
+      .filter(s => s.exerciseId === exerciseId)
+      .toArray())
+      .sort((a, b) => a.setNumber - b.setNumber);
+    await Promise.all(
+      remaining.map((s, i) => db.workoutSets.update(s.id!, { setNumber: i + 1 })),
+    );
+  };
+
+  const completeWorkout = async () => {
+    const duration      = Math.round(
+      (Date.now() - new Date(data!.workout.startedAt!).getTime()) / 60000,
+    );
+    const exerciseCount = data!.exercises.length;
+    await db.workouts.update(workoutId, {
+      status: 'completed', completedAt: new Date().toISOString(), duration,
+    });
+    track('workout_logged', { exercise_count: exerciseCount, duration_minutes: duration });
+    toast.success(`${data!.workout.name} complete! ${duration}m · ${data!.exercises.flatMap(e => e.sets).length} sets`);
+    onClose();
+  };
+
+  const cancelWorkout = async () => {
+    const sets = await db.workoutSets.where('workoutId').equals(workoutId).toArray();
+    const ids  = sets.map(s => s.id).filter((id): id is number => id !== undefined);
+    if (ids.length) await db.workoutSets.bulkDelete(ids);
+    await db.workouts.delete(workoutId);
+    setConfirmCancel(false);
+    onClose();
+  };
+
+  function formatTime(s: number): string {
+    const h   = Math.floor(s / 3600);
+    const m   = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    return `${m}:${String(sec).padStart(2,'0')}`;
+  }
+
+  return (
+    <>
+      <BottomSheet open={open} onClose={onClose} title="" hideClose snapPoints>
+        <div className="flex flex-col gap-3">
+
+          {/* Header: name + live timer + cancel link */}
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-base font-bold text-content-primary">
+                {data?.workout.name ?? 'Workout'}
+              </p>
+              <p className="text-2xl font-mono font-semibold text-accent mt-0.5">
+                {formatTime(elapsed)}
+              </p>
+            </div>
+            <button
+              onClick={() => setConfirmCancel(true)}
+              className="text-xs text-content-muted hover:text-danger transition-colors mt-1"
+            >
+              Cancel session
+            </button>
+          </div>
+
+          {/* Exercises + sets */}
+          {(data?.exercises ?? []).map(({ exercise, sets }) => (
+            <GlassCard key={exercise!.id} padding="sm">
+              <div className="mb-2">
+                <p className="text-sm font-semibold text-content-primary">{exercise!.name}</p>
+                <p className="text-[10px] text-content-muted capitalize">
+                  {exercise!.primaryMuscle} · {exercise!.equipment}
+                </p>
+              </div>
+
+              <div className="flex flex-col">
+                {sets.map(set => (
+                  <SetRow
+                    key={set.id}
+                    set={set}
+                    onDelete={() => set.id !== undefined && deleteSet(set.id, exercise!.id!)}
+                  />
+                ))}
+              </div>
+
+              <button
+                onClick={() => addSet(exercise!.id!)}
+                className="mt-2 w-full py-1.5 text-xs text-accent hover:bg-accent/5 glass-1 rounded-input transition-colors"
+              >
+                + Add Set
+              </button>
+            </GlassCard>
+          ))}
+
+          {/* Add exercise button */}
+          <button
+            onClick={() => setPickerOpen(true)}
+            className="flex items-center justify-center gap-2 py-3.5 glass-1 hover:glass-2 rounded-card border border-dashed border-white/[0.1] text-content-muted hover:text-content-secondary transition-all"
+          >
+            <Plus size={16} />
+            <span className="text-sm font-medium">Add Exercise</span>
+          </button>
+
+          {/* Complete */}
+          <Button variant="primary" onClick={completeWorkout} fullWidth>
+            ✓ Complete Workout
+          </Button>
+        </div>
+      </BottomSheet>
+
+      <ExercisePickerSheet
+        workoutId={workoutId}
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+      />
+
+      <Modal open={confirmCancel} onClose={() => setConfirmCancel(false)} title="Cancel Workout?" size="sm">
+        <p className="text-sm text-content-secondary mb-4">
+          All exercises and sets from this session will be deleted.
+        </p>
+        <div className="flex gap-2">
+          <Button variant="ghost" fullWidth onClick={() => setConfirmCancel(false)}>Keep Going</Button>
+          <Button variant="danger" fullWidth onClick={cancelWorkout}>Cancel Workout</Button>
+        </div>
+      </Modal>
+    </>
   );
 }
 

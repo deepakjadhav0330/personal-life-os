@@ -6,11 +6,11 @@ import { GlassCard, Button, Tabs, EmptyState, BottomSheet, ProgressRing, Modal }
 import { HabitForm } from './HabitForm';
 import { toast } from '../../stores/useToastStore';
 import { todayStr } from '../../utils/dates';
-import { calculateStreak, completionRate } from '../../utils/habits';
+import { calculateStreak, completionRate, isHabitScheduledOn } from '../../utils/habits';
 import type { Habit } from '../../db/schema';
 import { Plus, Check, Flame, BarChart3, Trash2, Edit3 } from 'lucide-react';
 import { IconButton } from '../../components/ui';
-import { format, subDays } from 'date-fns';
+import { format, subDays, addDays, startOfWeek, parseISO, getDate } from 'date-fns';
 import { useAnalytics } from '../../analytics/AnalyticsContext';
 
 export function HabitsPage() {
@@ -225,6 +225,130 @@ function getBestStreak(habits: Habit[], completions: any[]): number {
   return best;
 }
 
+// ─── 90-day contribution heatmap ─────────────────────────────
+// GitHub-style grid: 7 rows (Mon–Sun) × 13 columns (weeks)
+// Colors: habit.color = completed, 20% opacity = scheduled-not-done,
+//         near-transparent = not scheduled, blank = future
+function HabitHeatmap({ habit, completions }: { habit: Habit; completions: any[] }) {
+  const today     = new Date();
+  const todayStr  = format(today, 'yyyy-MM-dd');
+  // Start on the Monday of the week containing (today − 90 days)
+  const startDate = startOfWeek(subDays(today, 90), { weekStartsOn: 1 });
+
+  // Build all day objects from startDate to today
+  const days: { dateStr: string; scheduled: boolean; completed: boolean }[] = [];
+  let cur = startDate;
+  while (format(cur, 'yyyy-MM-dd') <= todayStr) {
+    const dateStr = format(cur, 'yyyy-MM-dd');
+    days.push({
+      dateStr,
+      scheduled: isHabitScheduledOn(habit, cur),
+      completed: completions.some(c => c.habitId === habit.id && c.date === dateStr),
+    });
+    cur = addDays(cur, 1);
+  }
+
+  // Group into weeks (each inner array = 7 days Mon–Sun)
+  const weeks: typeof days[] = [];
+  for (let i = 0; i < days.length; i += 7) {
+    weeks.push(days.slice(i, i + 7));
+  }
+
+  // Month labels above specific week columns
+  const monthLabels: { weekIndex: number; label: string }[] = [];
+  weeks.forEach((week, wi) => {
+    if (week[0]) {
+      const d = parseISO(week[0].dateStr);
+      if (getDate(d) <= 7) { // first week of that month
+        monthLabels.push({ weekIndex: wi, label: format(d, 'MMM') });
+      }
+    }
+  });
+
+  const CELL = 10;
+  const GAP  = 2;
+  const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+  return (
+    <div className="mt-3 overflow-x-auto">
+      {/* Month labels */}
+      {monthLabels.length > 0 && (
+        <div className="flex mb-1" style={{ gap: GAP }}>
+          {/* Space for day-of-week label column */}
+          <div style={{ width: 10 }} />
+          {weeks.map((_, wi) => {
+            const ml = monthLabels.find(m => m.weekIndex === wi);
+            return (
+              <div
+                key={wi}
+                style={{ width: CELL, flexShrink: 0 }}
+                className="text-[8px] text-content-muted text-center"
+              >
+                {ml?.label ?? ''}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Grid rows — one row per day of week */}
+      <div className="flex flex-col" style={{ gap: GAP }}>
+        {DAY_LABELS.map((dayLabel, rowIdx) => (
+          <div key={rowIdx} className="flex items-center" style={{ gap: GAP }}>
+            {/* Day label */}
+            <span className="text-[8px] text-content-muted" style={{ width: 10 }}>
+              {rowIdx % 2 === 0 ? dayLabel : ''}
+            </span>
+            {/* Week columns */}
+            {weeks.map((week, wi) => {
+              const cell = week[rowIdx];
+              let bg: string;
+              if (!cell) {
+                bg = 'transparent';
+              } else if (cell.completed) {
+                bg = habit.color;
+              } else if (cell.scheduled) {
+                bg = `${habit.color}30`;
+              } else {
+                bg = 'rgba(255,255,255,0.03)';
+              }
+              return (
+                <div
+                  key={wi}
+                  title={cell?.dateStr}
+                  style={{
+                    width:           CELL,
+                    height:          CELL,
+                    borderRadius:    2,
+                    backgroundColor: bg,
+                    flexShrink:      0,
+                  }}
+                />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-3 mt-2">
+        <div className="flex items-center gap-1">
+          <div style={{ width: CELL, height: CELL, borderRadius: 2, backgroundColor: habit.color }} />
+          <span className="text-[9px] text-content-muted">Done</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div style={{ width: CELL, height: CELL, borderRadius: 2, backgroundColor: `${habit.color}30` }} />
+          <span className="text-[9px] text-content-muted">Missed</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div style={{ width: CELL, height: CELL, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.03)' }} />
+          <span className="text-[9px] text-content-muted">Not scheduled</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HabitStats({ habits, completions }: { habits: Habit[]; completions: any[] }) {
   if (!habits.length) {
     return <EmptyState icon={<BarChart3 size={24} />} title="No habits to analyze" subtitle="Add habits first to see statistics" />;
@@ -257,6 +381,9 @@ function HabitStats({ habits, completions }: { habits: Habit[]; completions: any
                 </div>
               ))}
             </div>
+
+            {/* 90-day contribution heatmap */}
+            <HabitHeatmap habit={habit} completions={hc} />
           </GlassCard>
         );
       })}

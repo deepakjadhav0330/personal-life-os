@@ -6,6 +6,7 @@ import { PageHeader } from '../../components/layout/PageHeader';
 import { GlassCard, Button, Tabs, EmptyState, BottomSheet, Textarea, Input, Modal } from '../../components/ui';
 import { useAnalytics } from '../../analytics/AnalyticsContext';
 import { toast } from '../../stores/useToastStore';
+import { autoCompleteHabits } from '../../utils/habitAutoComplete';
 import { todayStr, formatDate } from '../../utils/dates';
 import type { JournalMood } from '../../db/schema';
 import { BookOpen, Lightbulb, Search, Plus, Trash2 } from 'lucide-react';
@@ -121,6 +122,10 @@ function JournalEntries({ autoOpen = false }: { autoOpen?: boolean }) {
       await db.journalEntries.add({ ...data, createdAt: now });
       track('journal_entry_created', { entry_type: data.type as string, has_mood: !!mood });
       toast.success('Entry saved!');
+      // Auto-complete journaling/reflection habits
+      autoCompleteHabits('journal').then(done => {
+        if (done.length) toast.success(`Habit${done.length > 1 ? 's' : ''} auto-done: ${done.join(', ')}`);
+      });
     }
     setIsEditing(false);
   };

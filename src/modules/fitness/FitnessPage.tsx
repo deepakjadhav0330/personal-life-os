@@ -8,6 +8,7 @@ import { useAnalytics } from '../../analytics/AnalyticsContext';
 import { useInterval } from '../../hooks/useInterval';
 import { toast } from '../../stores/useToastStore';
 import { todayStr, formatDate, getDaysAgo } from '../../utils/dates';
+import { autoCompleteHabits } from '../../utils/habitAutoComplete';
 import { useSetting } from '../../hooks/useSetting';
 import { Input, Select } from '../../components/ui';
 import {
@@ -98,6 +99,10 @@ function BodyTab() {
     });
     track('measurement_logged', { measurement_type: measureType });
     toast.success('Measurement saved!');
+    // Auto-complete weigh-in/body-check habits
+    autoCompleteHabits('measurement').then(done => {
+      if (done.length) toast.success(`Habit${done.length > 1 ? 's' : ''} auto-done: ${done.join(', ')}`);
+    });
     setMeasureValue(''); setIsFormOpen(false);
   };
 
@@ -511,7 +516,10 @@ function ActiveWorkoutSheet({
       status: 'completed', completedAt: new Date().toISOString(), duration,
     });
     track('workout_logged', { exercise_count: exerciseCount, duration_minutes: duration });
-    toast.success(`${data!.workout.name} complete! ${duration}m · ${data!.exercises.flatMap(e => e.sets).length} sets`);
+    // Auto-complete workout/exercise habits
+    const habitsDone = await autoCompleteHabits('workout');
+    const msg = habitsDone.length > 0 ? ` · auto-marked: ${habitsDone.join(', ')}` : '';
+    toast.success(`${data!.workout.name} complete! ${duration}m · ${data!.exercises.flatMap(e => e.sets).length} sets${msg}`);
     onClose();
   };
 
@@ -666,6 +674,9 @@ function NutritionTab() {
     } else {
       await db.nutritionLogs.update(log.id, { waterMl: (log.waterMl ?? 0) + ml, updatedAt: now });
     }
+    // Auto-complete water/hydration habits
+    const done = await autoCompleteHabits('water');
+    if (done.length) toast.success(`+${ml}ml · habit${done.length > 1 ? 's' : ''} done: ${done.join(', ')}`);
   };
 
   const addFood = async () => {
@@ -698,6 +709,10 @@ function NutritionTab() {
     }
     track('nutrition_logged', { meal_name: meal });
     toast.success('Food logged!');
+    // Auto-complete nutrition/diet habits
+    autoCompleteHabits('nutrition').then(done => {
+      if (done.length) toast.success(`Habit${done.length > 1 ? 's' : ''} auto-done: ${done.join(', ')}`);
+    });
     setFoodName(''); setCalories(''); setProtein(''); setCarbs(''); setFat('');
     setCaloriesManuallyEdited(false);
     setIsAddingFood(false);

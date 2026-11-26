@@ -5,6 +5,7 @@ import { parseQuickAdd, type QuickAddResult } from '../../utils/quickAdd';
 import { toast } from '../../stores/useToastStore';
 import { useSetting } from '../../hooks/useSetting';
 import { useAnalytics } from '../../analytics/AnalyticsContext';
+import { autoCompleteHabits } from '../../utils/habitAutoComplete';
 import { todayStr } from '../../utils/dates';
 import { Sparkles, X, ArrowRight } from 'lucide-react';
 import { cn } from '../../utils/cn';
@@ -158,6 +159,7 @@ export function QuickAddBar({ initialValue }: QuickAddBarProps) {
             unit: result.data.bodyUnit ?? 'kg',
             createdAt: now,
           });
+          autoCompleteHabits('measurement').catch(() => {});
           break;
 
         case 'water': {
@@ -177,6 +179,7 @@ export function QuickAddBar({ initialValue }: QuickAddBarProps) {
               updatedAt: now,
             });
           }
+          autoCompleteHabits('water').catch(() => {});
           break;
         }
 

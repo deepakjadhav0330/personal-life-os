@@ -8,6 +8,7 @@ import {
   Badge, ProgressBar, Input, Textarea, Modal,
 } from '../../components/ui';
 import { toast } from '../../stores/useToastStore';
+import { autoCompleteHabits } from '../../utils/habitAutoComplete';
 import { todayStr, formatDate } from '../../utils/dates';
 import { formatMinutes } from '../../utils/format';
 import type { LearningItem, LearningItemType, LearningStatus } from '../../db/schema';
@@ -361,6 +362,10 @@ function LearningDetail({
       await db.learningItems.update(item.id!, updates);
       if (newProgress >= 100) toast.success('Item completed! 🎓');
       else toast.success('Session logged!');
+      // Auto-complete reading/learning habits
+      autoCompleteHabits('learning').then(done => {
+        if (done.length) toast.success(`Habit${done.length > 1 ? 's' : ''} auto-done: ${done.join(', ')}`);
+      });
       setSessionDuration(''); setSessionProgress(''); setSessionNotes(''); setSessionTakeaway('');
       setIsLoggingSession(false);
       if (newProgress >= 100) onClose();

@@ -196,9 +196,9 @@ function WorkoutsTab() {
   const [trackingOpen,     setTrackingOpen]      = useState(false);
   const [currentWorkoutId, setCurrentWorkoutId]  = useState<number | null>(null);
 
-  // Show BOTH active and completed workouts
+  // Show BOTH active and completed workouts — order by date (indexed)
   const allWorkouts = useLiveQuery(
-    () => db.workouts.orderBy('startedAt').reverse().limit(21).toArray(),
+    () => db.workouts.orderBy('date').reverse().limit(21).toArray(),
     [], [],
   );
 

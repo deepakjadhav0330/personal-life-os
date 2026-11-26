@@ -382,7 +382,9 @@ function ExercisePickerSheet({
   const exercises = useLiveQuery(
     () => query.length >= 1
       ? db.exercises.filter(e => e.name.toLowerCase().includes(query.toLowerCase())).toArray()
-      : db.exercises.orderBy('name').limit(30).toArray(),
+      : db.exercises.toArray().then(arr =>
+          arr.sort((a, b) => a.name.localeCompare(b.name)).slice(0, 30),
+        ),
     [query], [],
   );
 

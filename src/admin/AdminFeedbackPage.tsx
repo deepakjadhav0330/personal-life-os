@@ -4,6 +4,7 @@ import { GlassCard, EmptyState } from '../components/ui';
 import { useAuth } from '../auth/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '../utils/cn';
+import { markFeedbackSeen } from '../hooks/useAdminNudges';
 
 type Category = 'bug' | 'suggestion' | 'general' | 'praise';
 
@@ -58,6 +59,8 @@ export function AdminFeedbackPage() {
       setItems(data.feedback);
       setTotal(data.total);
       setPages(data.pages);
+      // Mark all current feedback as seen so the admin notification clears
+      markFeedbackSeen(data.total);
       setPage(pg);
       setError('');
     } catch {

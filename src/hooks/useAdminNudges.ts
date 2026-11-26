@@ -69,6 +69,54 @@ export function useAdminNudges(): Nudge[] {
         });
       }
 
+      // ── 3. New feedback since last seen ──────────────────────
+      // We store the last-acknowledged feedback total in localStorage.
+      // Any increase means new submissions came in.
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        if (supabaseUrl && session?.access_token) {
+          const res = await fetch(`${supabaseUrl}/functions/v1/admin-feedback?page=1`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (res.ok) {
+            const data = await res.json() as { total: number };
+            const currentTotal = data.total ?? 0;
+            const FEEDBACK_KEY = 'lifeOS_admin_feedback_seen';
+            const lastSeen = parseInt(localStorage.getItem(FEEDBACK_KEY) ?? '0');
+
+            if (currentTotal > lastSeen) {
+              const newCount = currentTotal - lastSeen;
+              results.push({
+                id:      `admin-new-feedback-${currentTotal}`,
+                message: `${newCount} new feedback submission${newCount > 1 ? 's' : ''} from users`,
+                emoji:   '💬',
+                color:   '#8b5cf6',
+                priority: 2,
+                action:  { label: 'View feedback', path: '/admin/feedback' },
+              });
+            }
+          }
+        }
+      } catch { /* feedback check is best-effort */ }
+
+      // ── 4. New user registrations today ───────────────────────
+      const todayISO = new Date().toISOString().slice(0, 10);
+      const { count: newToday } = await supabase
+        .from('access_requests')
+        .select('*', { count: 'exact', head: true })
+        .gte('requested_at', `${todayISO}T00:00:00`);
+
+      if (newToday && newToday > 0) {
+        results.push({
+          id:      `admin-signups-today-${todayISO}`,
+          message: `${newToday} new access request${newToday > 1 ? 's' : ''} submitted today`,
+          emoji:   '🆕',
+          color:   '#22c55e',
+          priority: 2,
+          action:  { label: 'Review requests', path: '/admin/users' },
+        });
+      }
+
       setNudges(results);
     } catch {
       // Supabase unavailable — fail silently, don't show stale data
@@ -94,4 +142,9 @@ export function useAdminNudges(): Nudge[] {
   }, [refresh]);
 
   return nudges;
+}
+
+/** Call this when the admin opens the feedback page to mark all as seen. */
+export function markFeedbackSeen(total: number): void {
+  try { localStorage.setItem('lifeOS_admin_feedback_seen', String(total)); } catch { /* silent */ }
 }

@@ -274,6 +274,9 @@ function WorkoutsTab() {
         </div>
       )}
 
+      {/* Personal Records */}
+      <PersonalRecordsCard />
+
       {/* Start workout sheet */}
       <BottomSheet open={isStarting} onClose={() => setIsStarting(false)} title="Start Workout">
         <div className="flex flex-col gap-4">
@@ -344,6 +347,12 @@ function SetRow({ set, onDelete }: { set: any; onDelete: () => void }) {
     }).catch(() => {});
   };
 
+  const togglePR = async () => {
+    const newPR = !set.isPR;
+    await db.workoutSets.update(set.id!, { isPR: newPR });
+    if (newPR) toast.success('🏆 PR marked!');
+  };
+
   return (
     <div className="flex items-center gap-2 py-1.5 border-b border-white/[0.04] last:border-0">
       <span className="text-xs text-content-muted w-6 text-center shrink-0">{set.setNumber}</span>
@@ -367,6 +376,14 @@ function SetRow({ set, onDelete }: { set: any; onDelete: () => void }) {
         aria-label={`Set ${set.setNumber} reps`}
       />
       <span className="text-xs text-content-muted flex-1">reps</span>
+      {/* PR toggle */}
+      <button
+        onClick={togglePR}
+        title={set.isPR ? 'Remove PR flag' : 'Mark as personal record'}
+        className={`text-sm transition-all ${set.isPR ? 'scale-110' : 'opacity-30 hover:opacity-70'}`}
+      >
+        🏆
+      </button>
       <button
         onClick={onDelete}
         aria-label="Delete set"
@@ -375,6 +392,60 @@ function SetRow({ set, onDelete }: { set: any; onDelete: () => void }) {
         <X size={13} />
       </button>
     </div>
+  );
+}
+
+// ─── Personal Records ─────────────────────────────────────────
+function PersonalRecordsCard() {
+  const prSets = useLiveQuery(
+    () => db.workoutSets.filter(s => !!s.isPR).toArray(),
+    [], [],
+  );
+
+  const prData = useLiveQuery(async () => {
+    if (!prSets?.length) return [];
+    // Group by exercise, keep highest weight per exercise
+    const byExercise = new Map<number, typeof prSets[0]>();
+    for (const s of prSets) {
+      const existing = byExercise.get(s.exerciseId);
+      if (!existing || (s.weight ?? 0) > (existing.weight ?? 0)) {
+        byExercise.set(s.exerciseId, s);
+      }
+    }
+    const exerciseIds = [...byExercise.keys()];
+    const exercises   = await Promise.all(exerciseIds.map(id => db.exercises.get(id)));
+    return exerciseIds.map((id, i) => ({
+      exercise: exercises[i],
+      set:      byExercise.get(id)!,
+    })).filter(r => !!r.exercise);
+  }, [prSets?.length], []);
+
+  if (!(prData ?? []).length) return null;
+
+  return (
+    <GlassCard>
+      <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">
+        🏆 Personal Records
+      </p>
+      <div className="flex flex-col gap-2">
+        {(prData ?? []).map(({ exercise, set }) => (
+          <div key={exercise!.id} className="flex items-center justify-between py-1.5 border-b border-white/[0.04] last:border-0">
+            <div>
+              <p className="text-sm font-medium text-content-primary">{exercise!.name}</p>
+              <p className="text-[11px] text-content-muted capitalize">{exercise!.primaryMuscle}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-bold text-warning">
+                {set.weight ?? 0}kg × {set.reps ?? 0}
+              </p>
+              <p className="text-[10px] text-content-muted">
+                {set.createdAt?.slice(0, 10) ?? '—'}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </GlassCard>
   );
 }
 

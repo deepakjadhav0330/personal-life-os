@@ -8,19 +8,20 @@ import { useAnalytics } from '../../analytics/AnalyticsContext';
 import { toast } from '../../stores/useToastStore';
 import { autoCompleteHabits } from '../../utils/habitAutoComplete';
 import { todayStr, formatDate } from '../../utils/dates';
+import { format, subDays } from 'date-fns';
 import type { JournalMood } from '../../db/schema';
-import { BookOpen, Lightbulb, Search, Plus, Trash2 } from 'lucide-react';
+import { BookOpen, Lightbulb, Search, Plus, Trash2, TrendingUp } from 'lucide-react';
 
-const MOODS: { key: JournalMood; emoji: string; label: string }[] = [
-  { key: 'great', emoji: '😄', label: 'Great' },
-  { key: 'good', emoji: '😊', label: 'Good' },
-  { key: 'okay', emoji: '😐', label: 'Okay' },
-  { key: 'bad', emoji: '😔', label: 'Bad' },
-  { key: 'terrible', emoji: '😞', label: 'Terrible' },
+const MOODS: { key: JournalMood; emoji: string; label: string; color: string }[] = [
+  { key: 'great',    emoji: '😄', label: 'Great',    color: '#22c55e' },
+  { key: 'good',     emoji: '😊', label: 'Good',     color: '#84cc16' },
+  { key: 'okay',     emoji: '😐', label: 'Okay',     color: '#f59e0b' },
+  { key: 'bad',      emoji: '😔', label: 'Bad',      color: '#f97316' },
+  { key: 'terrible', emoji: '😞', label: 'Terrible', color: '#ef4444' },
 ];
 
 export function JournalPage() {
-  const [activeTab, setActiveTab] = useState<'entries' | 'reflect'>('entries');
+  const [activeTab, setActiveTab] = useState<'entries' | 'reflect' | 'mood'>('entries');
   const location = useLocation();
   const [autoOpen] = useState(!!location.state?.autoOpen);
 
@@ -35,14 +36,17 @@ export function JournalPage() {
       <div className="px-4 pb-4 flex flex-col gap-3">
         <Tabs
           tabs={[
-            { id: 'entries', label: 'Journal', icon: <BookOpen size={12} /> },
-            { id: 'reflect', label: 'Reflect', icon: <Lightbulb size={12} /> },
+            { id: 'entries', label: 'Journal',  icon: <BookOpen    size={12} /> },
+            { id: 'reflect', label: 'Reflect',  icon: <Lightbulb   size={12} /> },
+            { id: 'mood',    label: 'Mood',     icon: <TrendingUp  size={12} /> },
           ]}
           activeTab={activeTab}
           onChange={id => setActiveTab(id as any)}
+          scrollable
         />
         {activeTab === 'entries' && <JournalEntries autoOpen={autoOpen} />}
         {activeTab === 'reflect' && <ThoughtAnalysis />}
+        {activeTab === 'mood'    && <MoodStats />}
       </div>
     </div>
   );
@@ -326,5 +330,132 @@ function ThoughtAnalysis() {
         </div>
       </BottomSheet>
     </>
+  );
+}
+
+
+// ─── Mood Stats ───────────────────────────────────────────────
+// 30-day mood calendar + distribution breakdown
+
+const MOOD_ORDER: JournalMood[] = ['great', 'good', 'okay', 'bad', 'terrible'];
+
+function MoodStats() {
+  const now = new Date();
+
+  const entries = useLiveQuery(
+    () => db.journalEntries
+      .where('type').equals('entry')
+      .filter(e => !!e.mood)
+      .toArray(),
+    [], [],
+  );
+
+  if (!(entries ?? []).length) {
+    return (
+      <EmptyState
+        icon={<TrendingUp size={24} />}
+        title="No mood data yet"
+        subtitle="Set a mood when writing journal entries to see your trends here."
+      />
+    );
+  }
+
+  // ── 30-day calendar ───────────────────────────────────────
+  const days30 = Array.from({ length: 30 }, (_, i) => {
+    const d       = subDays(now, 29 - i);
+    const dateStr = format(d, 'yyyy-MM-dd');
+    const entry   = (entries ?? []).find(e => e.date === dateStr);
+    const moodCfg = entry?.mood ? MOODS.find(m => m.key === entry.mood) : null;
+    return { dateStr, moodCfg, dayLabel: format(d, 'd') };
+  });
+
+  // ── Distribution ──────────────────────────────────────────
+  const moodCounts: Partial<Record<JournalMood, number>> = {};
+  (entries ?? []).forEach(e => {
+    if (e.mood) moodCounts[e.mood] = (moodCounts[e.mood] ?? 0) + 1;
+  });
+  const total = Object.values(moodCounts).reduce((s, v) => s + v, 0);
+
+  // ── Trend: last 7 avg vs prior 7 ─────────────────────────
+  const moodScore = (m?: JournalMood) => {
+    if (!m) return null;
+    const scores: Record<JournalMood, number> = { great: 5, good: 4, okay: 3, bad: 2, terrible: 1 };
+    return scores[m];
+  };
+
+  const last7  = days30.slice(23).map(d => moodScore(d.moodCfg?.key as JournalMood)).filter((v): v is number => v !== null);
+  const prior7 = days30.slice(16, 23).map(d => moodScore(d.moodCfg?.key as JournalMood)).filter((v): v is number => v !== null);
+  const avg7   = last7.length  ? (last7.reduce((s, v)  => s + v, 0) / last7.length).toFixed(1)  : null;
+  const avg7p  = prior7.length ? (prior7.reduce((s, v) => s + v, 0) / prior7.length).toFixed(1) : null;
+
+  return (
+    <div className="flex flex-col gap-3">
+
+      {/* 30-day mood calendar */}
+      <GlassCard>
+        <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">
+          Last 30 Days
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {days30.map(({ dateStr, moodCfg, dayLabel }) => (
+            <div
+              key={dateStr}
+              title={`${dateStr}${moodCfg ? ` — ${moodCfg.label}` : ''}`}
+              className="flex flex-col items-center gap-0.5"
+              style={{ width: 24 }}
+            >
+              <div
+                className="w-6 h-6 rounded-md flex items-center justify-center text-xs"
+                style={{
+                  backgroundColor: moodCfg ? `${moodCfg.color}30` : 'rgba(255,255,255,0.03)',
+                  border:          moodCfg ? `1px solid ${moodCfg.color}60` : '1px solid rgba(255,255,255,0.05)',
+                }}
+              >
+                {moodCfg ? moodCfg.emoji : ''}
+              </div>
+              <span className="text-[8px] text-content-muted">{dayLabel}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* 7-day trend */}
+        {avg7 && avg7p && (
+          <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center gap-3">
+            <p className="text-xs text-content-muted flex-1">7-day mood average</p>
+            <span className="text-sm font-bold text-content-primary">{avg7}/5</span>
+            <span className={`text-xs ${parseFloat(avg7) >= parseFloat(avg7p) ? 'text-success' : 'text-danger'}`}>
+              {parseFloat(avg7) >= parseFloat(avg7p) ? '↑' : '↓'} vs prior week ({avg7p})
+            </span>
+          </div>
+        )}
+      </GlassCard>
+
+      {/* Distribution */}
+      <GlassCard>
+        <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest mb-3">
+          Mood Distribution ({total} entries)
+        </p>
+        <div className="flex flex-col gap-2">
+          {MOOD_ORDER.filter(m => moodCounts[m]).map(mood => {
+            const cfg  = MOODS.find(m => m.key === mood)!;
+            const cnt  = moodCounts[mood] ?? 0;
+            const pct  = total > 0 ? Math.round((cnt / total) * 100) : 0;
+            return (
+              <div key={mood} className="flex items-center gap-3">
+                <span className="text-base w-7">{cfg.emoji}</span>
+                <span className="text-xs text-content-secondary w-16">{cfg.label}</span>
+                <div className="flex-1 h-2 rounded-full bg-white/[0.06] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${pct}%`, backgroundColor: cfg.color }}
+                  />
+                </div>
+                <span className="text-xs text-content-muted w-10 text-right">{cnt}× ({pct}%)</span>
+              </div>
+            );
+          })}
+        </div>
+      </GlassCard>
+    </div>
   );
 }

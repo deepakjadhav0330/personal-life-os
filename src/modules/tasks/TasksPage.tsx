@@ -174,6 +174,11 @@ export function TasksPage() {
 
         <Tabs tabs={tabs as any} activeTab={activeTab} onChange={id => setActiveTab(id as Tab)} variant="underline" scrollable />
 
+        {/* Task aging card — only shown on overdue tab with actual overdue tasks */}
+        {activeTab === 'overdue' && tasks.length > 0 && (
+          <TaskAgingCard tasks={tasks} today={today} />
+        )}
+
         {!tasks.length ? (
           <EmptyState
             icon={<CheckCircle2 size={24} />}
@@ -278,6 +283,75 @@ function TaskRow({ task, onComplete, onUndo, onEdit, onDelete }: TaskRowProps) {
           <IconButton icon={<Trash2 size={14} />} label={`Delete ${task.title}`} onClick={onDelete} variant="danger" />
         </div>
       </div>
+    </GlassCard>
+  );
+}
+
+// ─── Task Aging Card ─────────────────────────────────────────
+// Shows in the Overdue tab: age distribution, oldest task, triage prompt
+
+function TaskAgingCard({ tasks, today }: { tasks: Task[]; today: string }) {
+  const aged = tasks
+    .filter(t => t.dueDate)
+    .map(t => {
+      const days = Math.floor(
+        (new Date(today).getTime() - new Date(t.dueDate!).getTime()) / 86400000,
+      );
+      return { ...t, daysOverdue: days };
+    })
+    .sort((a, b) => b.daysOverdue - a.daysOverdue);
+
+  if (!aged.length) return null;
+
+  const buckets = {
+    '1–3 days':  aged.filter(t => t.daysOverdue <= 3).length,
+    '4–7 days':  aged.filter(t => t.daysOverdue >= 4 && t.daysOverdue <= 7).length,
+    '1–2 weeks': aged.filter(t => t.daysOverdue >= 8 && t.daysOverdue <= 14).length,
+    '2+ weeks':  aged.filter(t => t.daysOverdue > 14).length,
+  };
+
+  const oldest = aged[0];
+  const highPriority = aged.filter(t => t.priority === 'high');
+
+  return (
+    <GlassCard className="border-danger/20">
+      <div className="flex items-center gap-2 mb-3">
+        <AlertCircle size={13} className="text-danger" />
+        <p className="text-[11px] font-semibold text-content-muted uppercase tracking-widest">
+          Task Health · {aged.length} overdue
+        </p>
+      </div>
+
+      {/* Age distribution */}
+      <div className="grid grid-cols-4 gap-1.5 mb-3">
+        {Object.entries(buckets).map(([label, count]) => (
+          count > 0 ? (
+            <div key={label} className="glass-1 rounded-input p-2 text-center">
+              <p className="text-sm font-bold text-danger">{count}</p>
+              <p className="text-[9px] text-content-muted leading-tight mt-0.5">{label}</p>
+            </div>
+          ) : null
+        ))}
+      </div>
+
+      {/* Oldest task spotlight */}
+      <div className="glass-1 rounded-input px-3 py-2.5 flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-content-muted mb-0.5">Oldest overdue</p>
+          <p className="text-sm font-medium text-content-primary truncate">{oldest.title}</p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-sm font-bold text-danger">{oldest.daysOverdue}d</p>
+          <p className="text-[10px] text-content-muted capitalize">{oldest.priority}</p>
+        </div>
+      </div>
+
+      {/* High priority callout */}
+      {highPriority.length > 0 && (
+        <p className="text-xs text-danger mt-2">
+          ⚠ {highPriority.length} high-priority task{highPriority.length > 1 ? 's' : ''} need immediate attention
+        </p>
+      )}
     </GlassCard>
   );
 }

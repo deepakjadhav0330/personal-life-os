@@ -213,6 +213,73 @@ async function computeNudges(): Promise<Nudge[]> {
       }
     }
 
+    // ── 7. Personal record set today ─────────────────────
+    const todayPRSets = await db.workoutSets
+      .filter(s => !!s.isPR && !!s.createdAt && s.createdAt.startsWith(today))
+      .toArray();
+
+    if (todayPRSets.length > 0) {
+      const exerciseIds = [...new Set(todayPRSets.map(s => s.exerciseId))];
+      const exercises   = await Promise.all(exerciseIds.slice(0, 2).map(id => db.exercises.get(id)));
+      const names       = exercises.filter(Boolean).map(e => e!.name).join(' & ');
+      nudges.push({
+        id:      `pr-today-${today}`,
+        message: `New personal record${todayPRSets.length > 1 ? 's' : ''} today! ${names}`,
+        emoji:   '🏆',
+        color:   '#f59e0b',
+        priority: 3,
+        action:  { label: 'View workouts', path: '/fitness' },
+      });
+    }
+
+    // ── 8. Habit streak milestones ────────────────────────
+    // Celebrate in the morning (6am–11am) so it appears as the user starts their day
+    const MILESTONES = [7, 14, 21, 30, 60, 100, 180, 365];
+    if (hour >= 6 && hour < 11) {
+      const habits = await db.habits.filter(h => !!h.isActive).toArray();
+      for (const habit of habits) {
+        const hc = await db.habitCompletions.where('habitId').equals(habit.id!).toArray();
+        const { current } = calculateStreak(hc, habit);
+        if (MILESTONES.includes(current)) {
+          nudges.push({
+            id:      `streak-milestone-${habit.id}-${current}`,
+            message: `${current}-day streak on "${habit.name}"! Keep the momentum going.`,
+            emoji:   '🔥',
+            color:   '#f97316',
+            priority: 3,
+            action:  { label: 'View habits', path: '/habits' },
+          });
+          break; // Max one streak celebration at a time
+        }
+      }
+    }
+
+    // ── 9. Learning item gone stale (14+ days) ────────────
+    if (hour >= 9) {
+      const staleDate = format(subDays(now, 14), 'yyyy-MM-dd');
+      const activeItems = await db.learningItems
+        .filter(i => i.status === 'active' || i.status === 'paused')
+        .toArray();
+      for (const item of activeItems) {
+        const lastSession = await db.learningSessions
+          .where('learningItemId').equals(item.id!)
+          .reverse()
+          .first();
+        const lastActivity = lastSession?.date ?? item.updatedAt?.slice(0, 10) ?? item.createdAt.slice(0, 10);
+        if (lastActivity < staleDate) {
+          nudges.push({
+            id:      `learning-stale-${item.id}`,
+            message: `"${item.title}" hasn't had a session in over 2 weeks`,
+            emoji:   '📚',
+            color:   '#3b82f6',
+            priority: 3,
+            action:  { label: 'Open learning', path: '/learning' },
+          });
+          break; // Max one stale learning nudge
+        }
+      }
+    }
+
   } catch (err) {
     console.warn('[nudges]', err);
   }
